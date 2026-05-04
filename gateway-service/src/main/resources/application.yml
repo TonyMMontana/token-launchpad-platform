@@ -1,0 +1,20 @@
+server:
+  port: 8081
+
+application:
+  security:
+    jwt:
+      secret-key: ${JWT_SECRET_KEY}
+
+spring:
+  application:
+    name: gateway-service
+  cloud:
+    gateway:
+      default-filters:
+        - Authentication
+      routes:
+        - id: sso-route
+          uri: http://localhost:8080
+          predicates:
+            - Path=/auth/**
