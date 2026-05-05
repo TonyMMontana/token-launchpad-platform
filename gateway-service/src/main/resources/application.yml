@@ -15,6 +15,10 @@ spring:
         - Authentication
       routes:
         - id: sso-route
-          uri: http://localhost:8080
+          uri: lb://sso-service
           predicates:
             - Path=/auth/**
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka
