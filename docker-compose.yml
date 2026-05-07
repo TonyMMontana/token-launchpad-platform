@@ -20,7 +20,7 @@ services:
       - "6379:6379"
 
   rabbitmq:
-    image: rabbitmq:3-management-alpine
+    image: heedy/rabbitmq-delayed-message-exchange:latest
     container_name: launchpad-rabbitmq
     environment:
       RABBITMQ_DEFAULT_USER: admin
