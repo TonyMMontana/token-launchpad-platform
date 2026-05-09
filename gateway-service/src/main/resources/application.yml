@@ -29,6 +29,11 @@ spring:
                 redis-rate-limiter.burstCapacity: 3
                 redis-rate-limiter.requestedTokens: 1
                 key-resolver: "#{@userIpKeyResolver}"
+        - id: campaign-route
+          uri: lb://campaign-service
+          predicates:
+            - Path=/campaigns/**
+
 eureka:
   client:
     service-url:
