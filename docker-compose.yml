@@ -1,11 +1,8 @@
-version: '3.8'
-
 services:
   postgres:
     image: postgres:15-alpine
     container_name: launchpad-postgres
     environment:
-      POSTGRES_DB: token_launchpad
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:
@@ -20,7 +17,7 @@ services:
       - "6379:6379"
 
   rabbitmq:
-    image: heedy/rabbitmq-delayed-message-exchange:latest
+    image: masstransit/rabbitmq:latest
     container_name: launchpad-rabbitmq
     environment:
       RABBITMQ_DEFAULT_USER: admin
