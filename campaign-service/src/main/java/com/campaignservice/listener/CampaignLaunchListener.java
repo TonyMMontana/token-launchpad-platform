@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 public class CampaignLaunchListener {
     private final CampaignService campaignService;
 
-    @RabbitListener(queues = RabbitMQConfig.QUEUE_NAME)
+    @RabbitListener(queues = RabbitMQConfig.CAMPAIGN_LAUNCH_QUEUE)
     public void receive(Long campaignId) {
         campaignService.launchCampaign(campaignId);
     }
