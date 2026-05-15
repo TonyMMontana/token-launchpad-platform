@@ -1,6 +1,8 @@
 package com.campaignservice.config;
 
 import org.springframework.amqp.core.*;
+import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
+import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -50,5 +52,10 @@ public class RabbitMQConfig {
     @Bean
     public Binding reserveBinding(Queue reserveQueue, DirectExchange sagaExchange) {
         return BindingBuilder.bind(reserveQueue).to(sagaExchange).with(ROUTING_RESERVE);
+    }
+
+    @Bean
+    public MessageConverter messageConverter() {
+        return new Jackson2JsonMessageConverter();
     }
 }
