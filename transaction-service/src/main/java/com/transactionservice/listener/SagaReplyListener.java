@@ -1,8 +1,8 @@
 package com.transactionservice.listener;
 
 import com.transactionservice.config.RabbitMQConfig;
-import com.transactionservice.event.TokensReservedFailedEvent;
-import com.transactionservice.event.TokensReservedSuccessEvent;
+import com.transactionservice.event.messaging.TokensReservedFailedEvent;
+import com.transactionservice.event.messaging.TokensReservedSuccessEvent;
 import com.transactionservice.service.TransactionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.amqp.rabbit.annotation.RabbitHandler;
@@ -19,6 +19,7 @@ public class SagaReplyListener {
     public void handleSuccessReply(TokensReservedSuccessEvent event) {
         transactionService.handleSuccessSagaReply(event);
     }
+
     @RabbitHandler
     public void handleFailedReply(TokensReservedFailedEvent event) {
         transactionService.handleFailedSagaReply(event);

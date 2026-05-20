@@ -1,6 +1,7 @@
 package com.transactionservice.config;
 
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;
 import org.springframework.amqp.core.DirectExchange;
@@ -12,6 +13,7 @@ import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+@Slf4j
 @Configuration
 public class RabbitMQConfig {
 
@@ -51,6 +53,44 @@ public class RabbitMQConfig {
     public RabbitTemplate rabbitTemplate(ConnectionFactory connectionFactory, MessageConverter messageConverter) {
         RabbitTemplate template = new RabbitTemplate(connectionFactory);
         template.setMessageConverter(messageConverter);
+        template.setMandatory(true);
+        template.setConfirmCallback(
+                (correlationData,
+                 ack,
+                 cause) -> {
+                    if (ack) {
+                        log.info(
+                                "RabbitMQ ACK correlationId={}",
+                                correlationData != null
+                                        ? correlationData.getId()
+                                        : ""
+                        );
+                    } else {
+                        log.error(
+                                "RabbitMQ NACK correlationId={} cause={}",
+                                correlationData != null
+                                        ? correlationData.getId()
+                                        : "",
+                                cause
+                        );
+                    }
+                }
+        );
+        template.setReturnsCallback(returned -> {
+            log.error(
+                    """
+                    Message returned:
+                    exchange={}
+                    routingKey={}
+                    replyCode={}
+                    replyText={}
+                    """,
+                    returned.getExchange(),
+                    returned.getRoutingKey(),
+                    returned.getReplyCode(),
+                    returned.getReplyText()
+            );
+        });
         return template;
     }
 }

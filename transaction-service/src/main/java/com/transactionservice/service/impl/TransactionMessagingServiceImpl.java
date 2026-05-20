@@ -2,6 +2,7 @@ package com.transactionservice.service.impl;
 
 import com.transactionservice.service.TransactionMessagingService;
 import lombok.AllArgsConstructor;
+import org.springframework.amqp.rabbit.connection.CorrelationData;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 
@@ -11,7 +12,12 @@ public class TransactionMessagingServiceImpl implements TransactionMessagingServ
     private final RabbitTemplate rabbitTemplate;
 
     @Override
-    public void convertAndSend(String routingKey, Object event) {
-        rabbitTemplate.convertAndSend(routingKey, event);
+    public void convertAndSend(String exchange, String routingKey, Object event, CorrelationData correlationData) {
+        rabbitTemplate.convertAndSend(
+                exchange,
+                routingKey,
+                event,
+                correlationData
+        );
     }
 }

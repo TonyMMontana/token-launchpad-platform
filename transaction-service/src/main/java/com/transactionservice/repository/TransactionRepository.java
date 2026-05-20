@@ -1,6 +1,6 @@
 package com.transactionservice.repository;
 
-import com.transactionservice.model.Transaction;
+import com.transactionservice.model.transaction.Transaction;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
