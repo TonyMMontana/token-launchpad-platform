@@ -24,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -36,9 +37,9 @@ public class TransactionServiceImpl implements TransactionService {
 
     @Override
     @Transactional
-    public CreateTransactionResponseDto createTransaction(CreateTransactionRequestDto requestDto) {
-        log.info("Creating transaction for userId: {} ", requestDto.userId());
-        Transaction transaction = toModel(requestDto);
+    public CreateTransactionResponseDto createTransaction(UUID userId, CreateTransactionRequestDto requestDto) {
+        log.info("Creating transaction for userId: {} ",userId);
+        Transaction transaction = toModel(userId, requestDto);
         transaction.setTransactionStatus(TransactionStatus.PENDING);
 
         Transaction saved = transactionRepository.save(transaction);
@@ -66,9 +67,9 @@ public class TransactionServiceImpl implements TransactionService {
         });
     }
 
-    private Transaction toModel(CreateTransactionRequestDto requestDto) {
+    private Transaction toModel(UUID userId, CreateTransactionRequestDto requestDto) {
         Transaction transaction = new Transaction();
-        transaction.setUserId(requestDto.userId());
+        transaction.setUserId(userId);
         transaction.setCampaignId(requestDto.campaignId());
         transaction.setAmount(requestDto.amount());
         return transaction;

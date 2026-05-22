@@ -1,5 +1,6 @@
 package com.ssoservice.security;
 
+import com.ssoservice.model.User;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
@@ -20,8 +21,11 @@ public class JwtService {
     private Long expiration;
 
     public String generateToken(Authentication authentication) {
+        User user = (User) authentication.getPrincipal();
+        String userId = user.getId().toString();
+
         return Jwts.builder()
-                .subject(authentication.getName())
+                .subject(userId)
                 .claim("roles", getRoles(authentication))
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + expiration))

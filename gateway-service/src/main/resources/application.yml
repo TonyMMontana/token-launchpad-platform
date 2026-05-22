@@ -33,6 +33,10 @@ spring:
           uri: lb://campaign-service
           predicates:
             - Path=/campaigns/**
+        - id: transaction-route
+          uri: lb://transaction-service
+          predicates:
+            - Path=/transactions/**
 
 eureka:
   client:
