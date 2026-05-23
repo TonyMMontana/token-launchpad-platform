@@ -1,8 +1,8 @@
 package com.transactionservice.listener;
 
+import com.launchpad.common.event.TokensReservedFailedEvent;
+import com.launchpad.common.event.TokensReservedSuccessEvent;
 import com.transactionservice.config.RabbitMQConfig;
-import com.transactionservice.event.messaging.TokensReservedFailedEvent;
-import com.transactionservice.event.messaging.TokensReservedSuccessEvent;
 import com.transactionservice.service.TransactionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.amqp.rabbit.annotation.RabbitHandler;

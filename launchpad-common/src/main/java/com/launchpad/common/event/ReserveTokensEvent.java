@@ -1,8 +1,8 @@
-package com.transactionservice.event.messaging;
+package com.launchpad.common.event;
 
 import java.math.BigDecimal;
 
-public record TokensReservedSuccessEvent(
+public record ReserveTokensEvent(
         Long transactionId,
         Long campaignId,
         BigDecimal amount

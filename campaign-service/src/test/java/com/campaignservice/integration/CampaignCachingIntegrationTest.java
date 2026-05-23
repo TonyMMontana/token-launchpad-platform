@@ -3,12 +3,12 @@ package com.campaignservice.integration;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.campaignservice.dto.CampaignResponseDto;
-import com.campaignservice.event.ReserveTokensEvent;
 import com.campaignservice.model.Campaign;
 import com.campaignservice.model.Status;
 import com.campaignservice.repository.CampaignRepository;
 import com.campaignservice.service.CampaignMessagingService;
 import com.campaignservice.service.CampaignService;
+import com.launchpad.common.event.ReserveTokensEvent;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;

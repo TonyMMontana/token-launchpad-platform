@@ -1,4 +1,4 @@
-package com.transactionservice.event.messaging;
+package com.launchpad.common.event;
 
 import java.math.BigDecimal;
 

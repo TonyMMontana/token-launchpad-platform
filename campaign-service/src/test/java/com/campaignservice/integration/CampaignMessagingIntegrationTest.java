@@ -4,11 +4,11 @@ import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.campaignservice.config.RabbitMQConfig;
-import com.campaignservice.event.ReserveTokensEvent;
 import com.campaignservice.model.Campaign;
 import com.campaignservice.model.Status;
 import com.campaignservice.repository.CampaignRepository;
 import com.campaignservice.service.CampaignMessagingService;
+import com.launchpad.common.event.ReserveTokensEvent;
 import org.junit.jupiter.api.Test;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;

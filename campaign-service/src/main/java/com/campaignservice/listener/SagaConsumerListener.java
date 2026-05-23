@@ -1,8 +1,8 @@
 package com.campaignservice.listener;
 
 import com.campaignservice.config.RabbitMQConfig;
-import com.campaignservice.event.ReserveTokensEvent;
 import com.campaignservice.service.CampaignService;
+import com.launchpad.common.event.ReserveTokensEvent;
 import lombok.AllArgsConstructor;
 import org.springframework.amqp.rabbit.annotation.RabbitHandler;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;

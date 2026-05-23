@@ -2,8 +2,8 @@ package com.transactionservice.publisher.strategy.outbox.impl;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.launchpad.common.event.ReserveTokensEvent;
 import com.transactionservice.config.RabbitMQConfig;
-import com.transactionservice.event.messaging.ReserveTokensEvent;
 import com.transactionservice.model.outbox.OutboxEvent;
 import com.transactionservice.model.outbox.OutboxType;
 import com.transactionservice.publisher.strategy.outbox.OutboxEventStrategy;
