@@ -20,6 +20,10 @@ eureka:
     register-with-eureka: false
     fetch-registry: false
 
+outbox:
+  publisher:
+    enabled: false
+
 logging:
   level:
     root: INFO

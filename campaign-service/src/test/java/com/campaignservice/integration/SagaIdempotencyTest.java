@@ -1,0 +1,87 @@
+package com.campaignservice.integration;
+
+import static org.awaitility.Awaitility.await;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import com.campaignservice.config.RabbitMQConfig;
+import com.campaignservice.model.Campaign;
+import com.campaignservice.model.CampaignReservation;
+import com.campaignservice.repository.CampaignRepository;
+import com.campaignservice.repository.OutboxEventRepository;
+import com.campaignservice.repository.ReservationRepository;
+import com.launchpad.common.event.ReserveTokensEvent;
+import org.junit.jupiter.api.Test;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.beans.factory.annotation.Autowired;
+
+import java.math.BigDecimal;
+import java.time.Duration;
+import java.util.concurrent.TimeUnit;
+
+public class SagaIdempotencyTest extends AbstractIntegrationTest {
+
+    public static final String SAMPLE_TOKEN = "Sample Token";
+    public static final long TRANSACTION_ID = 1L;
+    public static final int TARGET_AMOUNT = 1000;
+    public static final int REQUEST_AMOUNT = 10;
+    public static final int MILLIS = 200;
+    public static final int TIMEOUT = 10;
+
+    @Autowired
+    private RabbitTemplate rabbitTemplate;
+
+    @Autowired
+    private CampaignRepository campaignRepository;
+
+    @Autowired
+    private OutboxEventRepository outboxEventRepository;
+
+    @Autowired
+    private ReservationRepository reservationRepository;
+
+    @Test
+    public void shouldProcessOnlyOneRequestWithTheSameTransactionId() {
+        Campaign campaign = new Campaign();
+        campaign.setTokenName(SAMPLE_TOKEN);
+        campaign.setTargetAmount(BigDecimal.valueOf(TARGET_AMOUNT));
+        campaign.setTokensSold(BigDecimal.ZERO);
+        campaign.setCampaignStatus(Campaign.CampaignStatus.LIVE);
+        campaignRepository.save(campaign);
+
+        ReserveTokensEvent event = new ReserveTokensEvent(TRANSACTION_ID, campaign.getId(), BigDecimal.TEN);
+
+        for (int i = 0; i < REQUEST_AMOUNT; i++) {
+            rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_SAGA, RabbitMQConfig.ROUTING_RESERVE, event);
+        }
+
+        await()
+                .atMost(TIMEOUT, TimeUnit.SECONDS)
+                .pollInterval(Duration.ofMillis(MILLIS))
+                .untilAsserted(() ->
+                {
+                    Campaign updated = campaignRepository
+                            .findById(campaign.getId())
+                            .orElseThrow();
+
+                    assertEquals(
+                            0,
+                            updated.getTokensSold().compareTo(BigDecimal.TEN),
+                            "Tokens sold should exactly equal 10"
+                    );
+
+                    long reservationCount = reservationRepository.count();
+                    assertEquals(
+                            1,
+                            reservationCount,
+                            "Only ONE reservation should be created despite 10 requests."
+                    );
+
+                    long outboxCount = outboxEventRepository.count();
+                    assertEquals(
+                            1,
+                            outboxCount,
+                            "Only ONE outbox should be created despite 10 requests."
+                    );
+                });
+    }
+}
