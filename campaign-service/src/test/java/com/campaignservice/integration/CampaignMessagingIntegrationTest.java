@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.campaignservice.config.RabbitMQConfig;
 import com.campaignservice.model.Campaign;
-import com.campaignservice.model.Status;
 import com.campaignservice.repository.CampaignRepository;
 import com.campaignservice.service.CampaignMessagingService;
 import com.launchpad.common.event.ReserveTokensEvent;
@@ -41,7 +40,7 @@ public class CampaignMessagingIntegrationTest extends AbstractIntegrationTest {
         campaign.setTokenName(SAMPLE_TOKEN);
         campaign.setTargetAmount(BigDecimal.valueOf(TARGET_AMOUNT));
         campaign.setTokensSold(BigDecimal.ZERO);
-        campaign.setStatus(Status.LIVE);
+        campaign.setCampaignStatus(Campaign.CampaignStatus.LIVE);
         campaignRepository.save(campaign);
 
         ReserveTokensEvent event = new ReserveTokensEvent(TRANSACTION_ID, campaign.getId(), BigDecimal.TEN);

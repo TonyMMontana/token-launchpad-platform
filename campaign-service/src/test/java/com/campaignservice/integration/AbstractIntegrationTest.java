@@ -1,6 +1,7 @@
 package com.campaignservice.integration;
 
 import com.campaignservice.repository.CampaignRepository;
+import com.campaignservice.repository.ReservationRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -20,6 +21,9 @@ public abstract class AbstractIntegrationTest {
 
     @Autowired
     private CampaignRepository campaignRepository;
+
+    @Autowired
+    private ReservationRepository reservationRepository;
 
     @Autowired
     private CacheManager cacheManager;
@@ -52,6 +56,7 @@ public abstract class AbstractIntegrationTest {
     @AfterEach
     protected void cleanUp() {
         campaignRepository.deleteAll();
+        reservationRepository.deleteAll();
 
         for (String cacheName : cacheManager.getCacheNames()) {
             Objects.requireNonNull(cacheManager.getCache(cacheName)).clear();

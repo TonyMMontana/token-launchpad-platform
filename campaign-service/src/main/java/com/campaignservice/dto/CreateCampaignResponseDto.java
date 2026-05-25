@@ -1,6 +1,6 @@
 package com.campaignservice.dto;
 
-import com.campaignservice.model.Status;
+import com.campaignservice.model.Campaign;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -10,6 +10,6 @@ public record CreateCampaignResponseDto(
         String tokenName,
         BigDecimal targetAmount,
         LocalDateTime targetDate,
-        Status status
+        Campaign.CampaignStatus campaignStatus
 ) {
 }
