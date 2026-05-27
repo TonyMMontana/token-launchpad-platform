@@ -19,16 +19,18 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class TransactionController {
     public static final String USER_ID_HEADER = "X-User-Id";
+    public static final String IDEMPOTENCY_KEY_HEADER = "X-Idempotency-Key";
 
     private final TransactionService transactionService;
 
     @PostMapping
     public ResponseEntity<CreateTransactionResponseDto> addTransaction(
             @RequestHeader(USER_ID_HEADER) UUID userId,
+            @RequestHeader(IDEMPOTENCY_KEY_HEADER) UUID idempotencyKey,
             @RequestBody CreateTransactionRequestDto requestDto) {
 
         return new ResponseEntity<>(
-                transactionService.createTransaction(userId, requestDto),
+                transactionService.createTransaction(userId, idempotencyKey, requestDto),
                 HttpStatus.CREATED
         );
     }

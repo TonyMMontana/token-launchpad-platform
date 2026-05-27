@@ -8,6 +8,7 @@ import com.launchpad.common.event.TokensReservedFailedEvent;
 import com.launchpad.common.event.TokensReservedSuccessEvent;
 import com.transactionservice.dto.CreateTransactionRequestDto;
 import com.transactionservice.dto.CreateTransactionResponseDto;
+import com.transactionservice.exception.domain.IdempotencyConflictException;
 import com.transactionservice.model.outbox.OutboxEvent;
 import com.transactionservice.model.outbox.OutboxStatus;
 import com.transactionservice.model.outbox.OutboxType;
@@ -16,6 +17,7 @@ import com.transactionservice.model.transaction.TransactionStatus;
 import com.transactionservice.repository.OutboxRepository;
 import com.transactionservice.repository.TransactionRepository;
 import com.transactionservice.service.TransactionService;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -37,12 +39,40 @@ public class TransactionServiceImpl implements TransactionService {
 
     @Override
     @Transactional
-    public CreateTransactionResponseDto createTransaction(UUID userId, CreateTransactionRequestDto requestDto) {
-        log.info("Creating transaction for userId: {} ",userId);
-        Transaction transaction = toModel(userId, requestDto);
-        transaction.setTransactionStatus(TransactionStatus.PENDING);
+    public CreateTransactionResponseDto createTransaction(UUID userId, UUID idempotencyKey, CreateTransactionRequestDto requestDto) {
+        log.info("Creating transaction for userId: {} ", userId);
+        LocalDateTime now = LocalDateTime.now();
+        int updated = transactionRepository.insertIfAbsent(
+                userId,
+                idempotencyKey,
+                requestDto.amount(),
+                requestDto.campaignId(),
+                now,
+                now
+        );
 
-        Transaction saved = transactionRepository.save(transaction);
+        if (updated == 0) {
+            log.info("Idempotency conflict detected. Returning existing transaction for key: {} for user: {}", idempotencyKey, userId);
+
+            Transaction existing = transactionRepository
+                    .getTransactionByIdempotencyKeyAndUserId(idempotencyKey, userId)
+                    .orElseThrow(() -> new EntityNotFoundException(
+                            "Critical: Transaction not found for userId: " + userId
+                                    + " and idempotencyKey: " + idempotencyKey));
+
+            if (!requestDto.campaignId().equals(existing.getCampaignId())
+                    || requestDto.amount().compareTo(existing.getAmount()) != 0) {
+                throw new IdempotencyConflictException("There is already a transaction with idempotencyKey: " + idempotencyKey);
+            }
+
+            return toDto(existing, Collections.emptyList());
+        }
+
+        Transaction saved = transactionRepository
+                .getTransactionByIdempotencyKeyAndUserId(idempotencyKey, userId)
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "Critical: Transaction not found for userId: " + userId
+                                + " and idempotencyKey: " + idempotencyKey));
 
         OutboxEvent outboxEvent = createOutboxEvent(saved);
         outboxRepository.save(outboxEvent);
@@ -54,6 +84,7 @@ public class TransactionServiceImpl implements TransactionService {
     public void handleSuccessSagaReply(TokensReservedSuccessEvent event) {
         transactionRepository.findById(event.transactionId()).ifPresent(transaction -> {
             transaction.setTransactionStatus(TransactionStatus.COMPLETED);
+            transaction.setUpdatedAt(LocalDateTime.now());
             transactionRepository.save(transaction);
         });
     }
@@ -62,17 +93,10 @@ public class TransactionServiceImpl implements TransactionService {
     public void handleFailedSagaReply(TokensReservedFailedEvent event) {
         transactionRepository.findById(event.transactionId()).ifPresent(transaction -> {
             transaction.setTransactionStatus(TransactionStatus.FAILED);
+            transaction.setUpdatedAt(LocalDateTime.now());
             transactionRepository.save(transaction);
             //trigger refund
         });
-    }
-
-    private Transaction toModel(UUID userId, CreateTransactionRequestDto requestDto) {
-        Transaction transaction = new Transaction();
-        transaction.setUserId(userId);
-        transaction.setCampaignId(requestDto.campaignId());
-        transaction.setAmount(requestDto.amount());
-        return transaction;
     }
 
     private OutboxEvent createOutboxEvent(Transaction saved) {
