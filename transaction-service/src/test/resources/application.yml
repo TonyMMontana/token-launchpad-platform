@@ -1,0 +1,32 @@
+spring:
+  application:
+    name: transaction-service-test
+
+  jpa:
+    hibernate:
+      ddl-auto: create
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+  rabbitmq:
+    listener:
+      simple:
+        missing-queues-fatal: false
+eureka:
+  client:
+    enabled: false
+    register-with-eureka: false
+    fetch-registry: false
+
+outbox:
+  publisher:
+    enabled: false
+
+logging:
+  level:
+    root: INFO
+    com.campaignservice: DEBUG
+    org.springframework.test.context.transaction: INFO
+    org.testcontainers: INFO
