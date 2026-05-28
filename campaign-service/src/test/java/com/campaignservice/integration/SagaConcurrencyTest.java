@@ -3,7 +3,6 @@ package com.campaignservice.integration;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.campaignservice.model.Campaign;
-import com.campaignservice.model.Status;
 import com.campaignservice.repository.CampaignRepository;
 import com.campaignservice.service.CampaignMessagingService;
 import com.campaignservice.service.CampaignService;
@@ -39,7 +38,7 @@ public class SagaConcurrencyTest extends AbstractIntegrationTest {
         Campaign campaign = new Campaign();
         campaign.setTargetAmount(BigDecimal.valueOf(TARGET_SUPPLY));
         campaign.setTokensSold(BigDecimal.valueOf(SOLD));
-        campaign.setStatus(Status.LIVE);
+        campaign.setCampaignStatus(Campaign.CampaignStatus.LIVE);
         Campaign saved = campaignRepository.save(campaign);
 
         final Long targetCampaignId = saved.getId();

@@ -1,6 +1,6 @@
 package com.campaignservice.dto;
 
-import com.campaignservice.model.Status;
+import com.campaignservice.model.Campaign;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 
 import java.math.BigDecimal;
@@ -12,6 +12,6 @@ public record CampaignResponseDto(
         String tokenName,
         BigDecimal targetAmount,
         LocalDateTime targetDate,
-        Status status
+        Campaign.CampaignStatus campaignStatus
 ) {
 }

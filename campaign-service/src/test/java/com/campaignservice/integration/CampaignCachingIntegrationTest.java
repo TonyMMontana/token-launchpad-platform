@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.campaignservice.dto.CampaignResponseDto;
 import com.campaignservice.model.Campaign;
-import com.campaignservice.model.Status;
 import com.campaignservice.repository.CampaignRepository;
 import com.campaignservice.service.CampaignMessagingService;
 import com.campaignservice.service.CampaignService;
@@ -33,7 +32,7 @@ public class CampaignCachingIntegrationTest extends AbstractIntegrationTest {
     public void shouldReturnCachedDataUntilReserveTokensTriggersEviction() {
         Campaign campaign = new Campaign();
         campaign.setTokenName(SAMPLE_TOKEN);
-        campaign.setStatus(Status.LIVE);
+        campaign.setCampaignStatus(Campaign.CampaignStatus.LIVE);
         campaign.setTargetAmount(BigDecimal.valueOf(1000));
         campaign.setTokensSold(BigDecimal.ZERO);
 

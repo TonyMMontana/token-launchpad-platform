@@ -15,6 +15,7 @@ import reactor.core.publisher.Mono;
 public class AuthenticationGatewayFilterFactory extends AbstractGatewayFilterFactory<AuthenticationGatewayFilterFactory.Config> {
 
     public static final String USER_ID_HEADER = "X-User-Id";
+    private static final String IDEMPOTENCY_KEY_HEADER = "X-Idempotency-Key";
 
     private final JwtUtil jwtUtil;
 
@@ -43,8 +44,16 @@ public class AuthenticationGatewayFilterFactory extends AbstractGatewayFilterFac
                 jwtUtil.validateToken(token);
 
                 String userId = jwtUtil.extractUser(token);
+                String idempotencyKey = exchange.getRequest().getHeaders().getFirst(IDEMPOTENCY_KEY_HEADER);
+
                 ServerHttpRequest modifiedRequest = exchange.getRequest().mutate()
-                        .headers(headers -> headers.set(USER_ID_HEADER, userId)) // is this good to try to override any info from front since i do not expect to recieve any header
+                        .headers(headers -> {
+                            headers.set(USER_ID_HEADER, userId);
+
+                            if (idempotencyKey != null) {
+                                headers.set(IDEMPOTENCY_KEY_HEADER, idempotencyKey);
+                            }
+                        })
                         .build();
 
                 return chain.filter(exchange.mutate().request(modifiedRequest).build());

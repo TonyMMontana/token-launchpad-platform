@@ -1,6 +1,6 @@
 spring:
   application:
-    name: campaign-service-test
+    name: transaction-service-test
 
   jpa:
     hibernate:

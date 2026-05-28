@@ -1,5 +1,6 @@
 package com.campaignservice.model;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -26,5 +27,13 @@ public class Campaign {
     BigDecimal tokensSold;
     LocalDateTime startTime;
     @Enumerated(EnumType.STRING)
-    Status status;
+    @Column(name = "status")
+    CampaignStatus campaignStatus;
+
+    public enum CampaignStatus {
+        PENDING,
+        LIVE,
+        SUCCESS,
+        FAILED
+    }
 }

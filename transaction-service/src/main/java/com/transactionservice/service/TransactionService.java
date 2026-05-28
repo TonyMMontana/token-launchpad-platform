@@ -8,7 +8,7 @@ import com.transactionservice.dto.CreateTransactionResponseDto;
 import java.util.UUID;
 
 public interface TransactionService {
-    CreateTransactionResponseDto createTransaction(UUID userId, CreateTransactionRequestDto requestDto);
+    CreateTransactionResponseDto createTransaction(UUID userId, UUID idempotencyKey, CreateTransactionRequestDto requestDto);
 
     void handleSuccessSagaReply(TokensReservedSuccessEvent event);
 

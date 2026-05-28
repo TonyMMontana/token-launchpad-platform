@@ -1,36 +1,26 @@
-package com.campaignservice.integration;
+package com.transactionservice.integration;
 
-import com.campaignservice.repository.CampaignRepository;
-import com.campaignservice.repository.OutboxEventRepository;
-import com.campaignservice.repository.ReservationRepository;
+import com.transactionservice.repository.OutboxRepository;
+import com.transactionservice.repository.TransactionRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
-import org.springframework.cache.CacheManager;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.containers.RabbitMQContainer;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
-import java.util.Objects;
-
 @Testcontainers
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 public abstract class AbstractIntegrationTest {
 
     @Autowired
-    private CampaignRepository campaignRepository;
+    private TransactionRepository transactionRepository;
 
     @Autowired
-    private OutboxEventRepository outboxEventRepository;
-
-    @Autowired
-    private ReservationRepository reservationRepository;
-
-    @Autowired
-    private CacheManager cacheManager;
+    private OutboxRepository outboxRepository;
 
     public static final String POSTGRES_16_ALPINE = "postgres:16-alpine";
     public static final String MASSTRANSIT_RABBITMQ_LATEST = "masstransit/rabbitmq:latest";
@@ -59,12 +49,7 @@ public abstract class AbstractIntegrationTest {
 
     @AfterEach
     protected void cleanUp() {
-        campaignRepository.deleteAll();
-        reservationRepository.deleteAll();
-        outboxEventRepository.deleteAll();
-
-        for (String cacheName : cacheManager.getCacheNames()) {
-            Objects.requireNonNull(cacheManager.getCache(cacheName)).clear();
-        }
+        outboxRepository.deleteAll();
+        transactionRepository.deleteAll();
     }
 }

@@ -1,4 +1,4 @@
-package com.transactionservice.model.transaction;
+package com.campaignservice.model;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -16,36 +16,33 @@ import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 @Entity
 @Getter
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-@Table(
-        name = "transactions",
+@Table(name = "campaign_reservations",
         uniqueConstraints = {
-                @UniqueConstraint(name = "uk_idempotency_key_and_user_id", columnNames = {"user_id", "idempotency_key"})
-        })
-public class Transaction {
+        @UniqueConstraint(name = "uk_transaction_id", columnNames = {"transaction_id"})
+})
+public class CampaignReservation {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     Long id;
-
+    @Column(unique = true, nullable = false)
+    Long transactionId;
     Long campaignId;
-
-    UUID userId;
-
     BigDecimal amount;
-
-    @Column(name = "status")
     @Enumerated(EnumType.STRING)
-    TransactionStatus transactionStatus;
-
-    UUID idempotencyKey;
-
+    ReservationStatus status;
+    String failureReason;
     LocalDateTime createdAt;
-
     LocalDateTime updatedAt;
+
+    public enum ReservationStatus {
+        PROCESSING,
+        RESERVED,
+        FAILED
+    }
 }

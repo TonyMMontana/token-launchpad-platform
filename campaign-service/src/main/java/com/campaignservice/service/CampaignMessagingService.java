@@ -1,7 +1,9 @@
 package com.campaignservice.service;
 
-public interface CampaignMessagingService {
-    void sendCreateCampaignMessage(Long campaignId, Long duration);
+import org.springframework.amqp.rabbit.connection.CorrelationData;
 
-    void sendSagaReply(String routingKey, Object event);
+public interface CampaignMessagingService {
+    void convertAndSendWithDelay(String exchange, String routing, Object message, Long delayInMs);
+
+    void convertAndSend(String exchange, String routingKey, Object event, CorrelationData correlationData);
 }
