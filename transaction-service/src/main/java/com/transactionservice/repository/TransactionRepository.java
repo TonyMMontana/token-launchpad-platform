@@ -32,4 +32,14 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     );
 
     Optional<Transaction> getTransactionByIdempotencyKeyAndUserId(UUID idempotencyKey, UUID userId);
+
+    @Modifying
+    @Query(value = """
+            UPDATE transactions
+            SET status = :newStatus, updated_at = :updatedAt
+            WHERE id = :transactionId AND status = 'PENDING'
+            """, nativeQuery = true)
+    int updateStatusIfPending(@Param("transactionId") Long transactionId,
+                              @Param("newStatus") String transactionStatus,
+                              @Param("updatedAt") LocalDateTime updatedAt);
 }
