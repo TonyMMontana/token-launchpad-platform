@@ -81,22 +81,42 @@ public class TransactionServiceImpl implements TransactionService {
     }
 
     @Override
+    @Transactional
     public void handleSuccessSagaReply(TokensReservedSuccessEvent event) {
-        transactionRepository.findById(event.transactionId()).ifPresent(transaction -> {
-            transaction.setTransactionStatus(TransactionStatus.COMPLETED);
-            transaction.setUpdatedAt(LocalDateTime.now());
-            transactionRepository.save(transaction);
-        });
+        log.info("Received SUCCESS saga reply for transaction: {} ", event.transactionId());
+
+        int updated = transactionRepository.updateStatusIfPending(
+                event.transactionId(),
+                TransactionStatus.COMPLETED.name(),
+                LocalDateTime.now()
+        );
+
+        if (updated == 0) {
+            log.warn("Saga reply ignored. Transaction {} is not PENDING.", event.transactionId());
+            return;
+        }
+
+        log.info("Transaction {} successfully marked as COMPLETED", event.transactionId());
     }
 
     @Override
+    @Transactional
     public void handleFailedSagaReply(TokensReservedFailedEvent event) {
-        transactionRepository.findById(event.transactionId()).ifPresent(transaction -> {
-            transaction.setTransactionStatus(TransactionStatus.FAILED);
-            transaction.setUpdatedAt(LocalDateTime.now());
-            transactionRepository.save(transaction);
-            //trigger refund
-        });
+        log.info("Received FAILED saga reply for transaction: {} ", event.transactionId());
+
+        int updated = transactionRepository.updateStatusIfPending(
+                event.transactionId(),
+                TransactionStatus.FAILED.name(),
+                LocalDateTime.now()
+        );
+
+        if (updated == 0) {
+            log.warn("FAILED Saga reply ignored. Transaction {} is not PENDING.", event.transactionId());
+            return;
+        }
+
+        log.info("Transaction {} marked as FAILED.", event.transactionId());
+        // TODO: trigger refund process
     }
 
     private OutboxEvent createOutboxEvent(Transaction saved) {
