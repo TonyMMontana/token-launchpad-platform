@@ -17,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Duration;
@@ -130,16 +131,10 @@ public class IdempotencyTest extends AbstractIntegrationTest {
     public void shouldUpdateStatusForSuccessSagaReplyWhenTransactionStatusIsPending() throws InterruptedException {
         UUID userId = UUID.randomUUID();
         UUID idempotencyKey = UUID.randomUUID();
-        transactionRepository.insertIfAbsent(
-                userId,
-                idempotencyKey,
-                BigDecimal.TEN,
-                1L,
-                LocalDateTime.now(),
-                LocalDateTime.now()
-        );
+        transactionService.createTransaction(userId, idempotencyKey, new CreateTransactionRequestDto(CAMPAIGN_ID, BigDecimal.TEN));
+
         Transaction transaction = transactionRepository.getTransactionByIdempotencyKeyAndUserId(idempotencyKey, userId).orElseThrow();
-        TokensReservedSuccessEvent event = new TokensReservedSuccessEvent(transaction.getId(), 1L, BigDecimal.TEN);
+        TokensReservedSuccessEvent event = new TokensReservedSuccessEvent(transaction.getId(), CAMPAIGN_ID, BigDecimal.TEN);
 
         int threadCount = THREAD_COUNT;
         ExecutorService executorService = Executors.newFixedThreadPool(threadCount);
@@ -169,16 +164,10 @@ public class IdempotencyTest extends AbstractIntegrationTest {
     public void shouldNotUpdateStatusForAnySagaReplyWhenTransactionStatusIsNotPending() {
         UUID userId = UUID.randomUUID();
         UUID idempotencyKey = UUID.randomUUID();
-        transactionRepository.insertIfAbsent(
-                userId,
-                idempotencyKey,
-                BigDecimal.TEN,
-                1L,
-                LocalDateTime.now(),
-                LocalDateTime.now()
-        );
+        transactionService.createTransaction(userId, idempotencyKey, new CreateTransactionRequestDto(CAMPAIGN_ID, BigDecimal.TEN));
+
         Transaction transaction = transactionRepository.getTransactionByIdempotencyKeyAndUserId(idempotencyKey, userId).orElseThrow();
-        TokensReservedFailedEvent event = new TokensReservedFailedEvent(transaction.getId(), 1L, BigDecimal.TEN, "Test reason");
+        TokensReservedFailedEvent event = new TokensReservedFailedEvent(transaction.getId(), CAMPAIGN_ID, BigDecimal.TEN, "Test reason");
 
         for (int i = 0; i < 5; i++) {
             transactionService.handleFailedSagaReply(event);
