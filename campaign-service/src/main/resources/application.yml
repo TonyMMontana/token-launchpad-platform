@@ -23,8 +23,10 @@ spring:
     password: postgres
   jpa:
     hibernate:
-      ddl-auto: update
-    show-sql: true
+      ddl-auto: validate
+  flyway:
+    enabled: true
+    locations: classpath:db/migrations
 
 eureka:
   client:
