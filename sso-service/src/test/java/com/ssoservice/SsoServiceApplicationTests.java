@@ -1,10 +1,8 @@
 package com.ssoservice;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
 
-@SpringBootTest
-class SsoServiceApplicationTests {
+class SsoServiceApplicationTests extends AbstractIntegrationTest {
 
 	@Test
 	void contextLoads() {

@@ -1,0 +1,14 @@
+spring:
+  application:
+    name: gateway-service-test
+
+eureka:
+  client:
+    enabled: false
+    register-with-eureka: false
+    fetch-registry: false
+
+application:
+  security:
+    jwt:
+      secret-key: dGhpcy1pcy1hLWRldi1vbmx5LWNpLWp3dC1zZWNyZXQta2V5LTEyMzQ1Njc4OTA=
