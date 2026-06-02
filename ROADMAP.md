@@ -120,31 +120,27 @@ Done when:
 
 ### Milestone 2: Correctness Before Scale
 
-Status: current focus
+Status: paused after first pass
 
 Goal: make the distributed transaction flow safe under duplicate messages, retries, partial failures, and concurrent requests.
 
 Work:
 
-- Finish request idempotency in `transaction-service`.
-- Store idempotency keys scoped by user.
-- Reject same idempotency key with different request payload.
-- Add idempotency to saga reply handling in `transaction-service`.
-- Add explicit transaction saga states.
-- Harden outbox publishers in transaction and campaign services.
-- Recover stuck `PROCESSING` outbox rows.
-- Add DLQs for saga queues.
+- Keep current request idempotency in `transaction-service`.
+- Keep idempotency keys scoped by user.
+- Keep same-key/different-payload conflict handling.
+- Keep transaction creation and outbox event creation in the same database transaction.
+- Return to deeper idempotency and saga-state hardening when a concrete duplicate-message bug appears.
 
 Done when:
 
 - Duplicate HTTP transaction requests create one transaction.
 - Duplicate RabbitMQ messages do not change state twice.
-- Outbox rows cannot be published by two service instances at the same time.
-- Poison messages are moved to DLQ.
+- A concrete idempotency or saga bug can be reproduced with a failing test before adding more abstractions.
 
 ### Milestone 3: Database Migrations
 
-Status: planned
+Status: complete
 
 Goal: make schema changes explicit and repeatable.
 
@@ -166,17 +162,17 @@ Done when:
 
 ### Milestone 4: CI With GitHub Actions
 
-Status: planned
+Status: current focus
 
 Goal: validate the platform automatically on every push.
 
 Work:
 
-- Add `.github/workflows/ci.yml`.
-- Use Java 21.
-- Cache Maven dependencies.
-- Run `mvn clean verify`.
-- Ensure Docker is available for Testcontainers.
+- Keep `.github/workflows/ci.yml` running the Maven reactor.
+- Keep Java 21 and Maven dependency caching.
+- Confirm the workflow triggers cover the active development branches.
+- Decide whether CI should rely only on Testcontainers or keep GitHub service containers for smoke coverage.
+- Make CI logs and failure artifacts useful for debugging.
 - Upload test reports on failure.
 
 Done when:
@@ -231,10 +227,14 @@ Done when:
 
 Status: planned
 
-Goal: deploy the platform to Minikube first, then AWS EKS.
+Goal: deploy the platform to Minikube first, then AWS EKS, with publisher behavior ready for multiple service replicas.
 
 Work:
 
+- Harden outbox publishers in transaction and campaign services before running multiple replicas.
+- Add atomic outbox row claiming so two instances cannot publish the same row.
+- Recover stuck `PROCESSING` outbox rows.
+- Add RabbitMQ DLQs for saga queues.
 - Create `k8s/` manifests.
 - Add Deployments, Services, ConfigMaps, and Secret references.
 - Add readiness and liveness probes.
@@ -245,6 +245,8 @@ Work:
 
 Done when:
 
+- Outbox rows cannot be published by two service instances at the same time.
+- Poison messages are moved to DLQ.
 - Platform runs in Minikube.
 - Gateway reaches backend services inside the cluster.
 - The same base manifests can be adapted for EKS.
@@ -297,33 +299,34 @@ Done when:
 
 ## Current Focus
 
-The current focus is request idempotency and saga correctness:
+The current focus is improving the existing GitHub Actions CI after completing the migration pass:
 
-- Add `X-Idempotency-Key` support to transaction creation.
-- Scope idempotency keys by user.
-- Detect same key with different payload and return conflict.
-- Keep transaction creation and outbox event creation in the same database transaction.
-- Add tests for duplicate request retries.
-- Add idempotency to transaction saga reply listeners.
+- Keep the Maven reactor running on every relevant push and pull request.
+- Verify the CI service-container setup does not conflict with Testcontainers.
+- Upload Surefire and Failsafe reports on failure.
+- Consider uploading application logs or Testcontainers logs if integration tests fail.
+- Add a simple status checklist to the README once the CI behavior is stable.
+- Keep migration-backed tests green.
+
+Deferred correctness notes:
+
+- Request idempotency stays on the roadmap, but deeper changes should wait for a reproduced bug or failing test.
+- Outbox publisher hardening is scheduled near the Kubernetes milestone, where multiple replicas make duplicate publishing a real operational risk.
 
 ## Short-Term Backlog
 
-- Finish robust request idempotency in `transaction-service`.
-- Add integration tests for request idempotency.
-- Add saga reply idempotency in `transaction-service`.
-- Add explicit saga state transitions.
-- Add Flyway or Liquibase migrations.
-- Harden outbox row claiming.
-- Add stuck outbox recovery.
-- Add RabbitMQ DLQs.
-- Add correlation IDs and event IDs.
-- Add GitHub Actions CI.
+- Improve GitHub Actions CI failure reporting.
 - Add service Dockerfiles.
+- Add correlation IDs and event IDs.
 
 ## Long-Term Backlog
 
 - Jenkins image publishing pipeline.
 - AWS EC2 provisioning.
+- Harden outbox row claiming before multi-replica service deployments.
+- Add stuck outbox recovery.
+- Add RabbitMQ DLQs.
+- Revisit request idempotency and saga reply idempotency when a concrete duplicate-message bug is reproduced.
 - Kubernetes manifests for Minikube and EKS.
 - Prometheus and Grafana dashboards.
 - Structured logging.
