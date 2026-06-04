@@ -1,0 +1,24 @@
+FROM maven:3.9.9-eclipse-temurin-21 AS build
+
+WORKDIR /workspace
+
+COPY pom.xml .
+COPY launchpad-common/pom.xml launchpad-common/pom.xml
+COPY sso-service/pom.xml sso-service/pom.xml
+
+RUN mvn -DskipTests -pl sso-service -am dependency:go-offline
+
+COPY launchpad-common/src launchpad-common/src
+COPY sso-service/src sso-service/src
+
+RUN mvn -DskipTests -pl sso-service -am package
+
+FROM eclipse-temurin:21-jre-alpine
+
+WORKDIR /app
+
+COPY --from=build /workspace/sso-service/target/sso-service-0.0.1-SNAPSHOT.jar app.jar
+
+EXPOSE 8080
+
+ENTRYPOINT ["java", "-jar", "/app/app.jar"]

@@ -1,0 +1,24 @@
+FROM maven:3.9.9-eclipse-temurin-21 AS build
+
+WORKDIR /workspace
+
+COPY pom.xml .
+COPY launchpad-common/pom.xml launchpad-common/pom.xml
+COPY transaction-service/pom.xml transaction-service/pom.xml
+
+RUN mvn -DskipTests -pl transaction-service -am dependency:go-offline
+
+COPY launchpad-common/src launchpad-common/src
+COPY transaction-service/src transaction-service/src
+
+RUN mvn -DskipTests -pl transaction-service -am package
+
+FROM eclipse-temurin:21-jre-alpine
+
+WORKDIR /app
+
+COPY --from=build /workspace/transaction-service/target/transaction-service-0.0.1-SNAPSHOT.jar app.jar
+
+EXPOSE 8083
+
+ENTRYPOINT ["java", "-jar", "/app/app.jar"]
