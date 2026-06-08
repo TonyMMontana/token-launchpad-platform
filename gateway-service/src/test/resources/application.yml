@@ -2,12 +2,6 @@ spring:
   application:
     name: gateway-service-test
 
-eureka:
-  client:
-    enabled: false
-    register-with-eureka: false
-    fetch-registry: false
-
 application:
   security:
     jwt:

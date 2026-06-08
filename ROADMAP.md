@@ -28,7 +28,6 @@ The project is being built to learn:
 - `sso-service`: registration, login, JWT issuing, user persistence.
 - `campaign-service`: campaign lifecycle, token reservation, Redis caching, RabbitMQ consumers, campaign-side outbox.
 - `transaction-service`: transaction creation, saga start, transaction-side outbox, saga reply handling.
-- `discovery-server`: Eureka service registry.
 - `launchpad-common`: shared event contracts used by messaging flows.
 
 ### Infrastructure
@@ -41,7 +40,7 @@ The project is being built to learn:
 
 ## What Is Already Implemented
 
-- Basic service split across gateway, auth, campaign, transaction, discovery, and shared contracts.
+- Basic service split across gateway, auth, campaign, transaction, and shared contracts.
 - JWT-based authentication through `sso-service`.
 - Gateway-level authentication filter.
 - Transaction creation flow.
@@ -56,7 +55,11 @@ The project is being built to learn:
 - Campaign-side outbox for saga replies.
 - Redis cache for campaign reads.
 - Testcontainers integration tests for campaign messaging, caching, concurrency, and idempotency.
-- Initial roadmap for CI/CD, AWS, Kubernetes, and observability.
+- Flyway migrations with Hibernate schema validation for production-like configs.
+- GitHub Actions CI for the Maven reactor.
+- Service Dockerfiles.
+- First-pass Kubernetes base manifests for local image deployment.
+- Initial roadmap for CD, AWS, Kubernetes, and observability.
 
 ## Learning Principles
 
@@ -74,7 +77,6 @@ The project is being built to learn:
 | Pattern | Current Usage |
 | --- | --- |
 | API Gateway | `gateway-service` validates JWT and forwards traffic |
-| Service Discovery | Eureka through `discovery-server` |
 | Database per Service | each domain service owns its persistence model |
 | Saga | transaction reservation flow across transaction and campaign services |
 | Transactional Outbox | outgoing RabbitMQ messages persisted before publishing |
@@ -87,13 +89,14 @@ The project is being built to learn:
 
 | Pattern | Why It Matters Here |
 | --- | --- |
-| Flyway or Liquibase | replace Hibernate schema auto-update with repeatable migrations |
+| Global Exception Handling | make error responses consistent across every service |
 | Request Idempotency | protect public POST requests from duplicate client retries |
 | Saga State Machine | make transaction progress explicit and safe under duplicate replies |
 | Outbox Row Claiming | allow multiple service instances without duplicate publishing |
 | Dead Letter Queues | isolate poison messages instead of retrying forever |
 | Correlation IDs | trace one user request across gateway, services, and RabbitMQ |
 | Contract Versioning | evolve events without breaking other services |
+| CD Pipeline | build and publish deployable images only after CI passes |
 | Observability | monitor saga failures, outbox lag, queue depth, and latency |
 
 ## Build Milestones
@@ -162,7 +165,7 @@ Done when:
 
 ### Milestone 4: CI With GitHub Actions
 
-Status: current focus
+Status: complete, with polish remaining
 
 Goal: validate the platform automatically on every push.
 
@@ -174,6 +177,7 @@ Work:
 - Decide whether CI should rely only on Testcontainers or keep GitHub service containers for smoke coverage.
 - Make CI logs and failure artifacts useful for debugging.
 - Upload test reports on failure.
+- Keep CI separate from CD so test validation stays fast and reliable.
 
 Done when:
 
@@ -181,26 +185,30 @@ Done when:
 - Integration tests run in the cloud.
 - Failures expose useful logs.
 
-### Milestone 5: Docker Images and Jenkins Pipeline
+### Milestone 5: Docker Images and CD Pipeline
 
-Status: planned
+Status: first pass started
 
 Goal: build and publish versioned service images.
 
 Work:
 
-- Add Dockerfiles for each service.
-- Add a root `Jenkinsfile`.
-- Build only after tests pass.
+- Keep Dockerfiles for each service.
+- Standardize local Kubernetes image tags across all services.
+- Add GitHub Actions CD workflow on a separate branch.
+- Build images only after CI passes.
 - Push images to DockerHub first or AWS ECR later.
 - Tag images with branch and commit SHA.
+- Keep registry credentials in GitHub Actions secrets, not in Git.
+- Add a root `Jenkinsfile`.
 - Optionally add image scanning.
 
 Done when:
 
-- Jenkins builds all service images from a clean checkout.
+- CD builds all service images from a clean checkout.
 - Images are traceable to Git commits.
 - Registry credentials are not committed.
+- The image tags used by Kubernetes manifests are produced by the pipeline.
 
 ### Milestone 6: AWS and Linux Provisioning
 
@@ -214,7 +222,7 @@ Work:
 - Configure SSH key access.
 - Disable password login and root login.
 - Restrict inbound ports.
-- Keep PostgreSQL, Redis, RabbitMQ, and Eureka internal.
+- Keep PostgreSQL, Redis, and RabbitMQ internal.
 - Store secrets in AWS SSM Parameter Store or Secrets Manager.
 
 Done when:
@@ -225,20 +233,20 @@ Done when:
 
 ### Milestone 7: Kubernetes Orchestration
 
-Status: planned
+Status: first pass started
 
 Goal: deploy the platform to Minikube first, then AWS EKS, with publisher behavior ready for multiple service replicas.
 
 Work:
 
+- Keep the existing `k8s/base` Kustomize structure.
+- Keep namespace, ConfigMap, Secret references, infra manifests, app Deployments, Services, and probes.
+- Replace the committed local-development Secret with a safe template before any public push.
+- Decide whether to keep a dev-only Secret manifest ignored locally, use generated secrets, or move secrets to an external provider later.
 - Harden outbox publishers in transaction and campaign services before running multiple replicas.
 - Add atomic outbox row claiming so two instances cannot publish the same row.
 - Recover stuck `PROCESSING` outbox rows.
 - Add RabbitMQ DLQs for saga queues.
-- Create `k8s/` manifests.
-- Add Deployments, Services, ConfigMaps, and Secret references.
-- Add readiness and liveness probes.
-- Decide whether Eureka remains useful inside Kubernetes.
 - Add Minikube overlay.
 - Add EKS overlay.
 - Consider Helm or Kustomize after raw manifests work.
@@ -282,6 +290,8 @@ Goal: reduce operational and security risks.
 
 Work:
 
+- Add global exception handlers to every runtime service.
+- Standardize API error response shape, validation errors, auth failures, and domain exceptions.
 - Add structured JSON logging.
 - Add correlation IDs across HTTP and RabbitMQ.
 - Add resource limits in Docker/Kubernetes.
@@ -297,15 +307,21 @@ Done when:
 - Logs, metrics, and traces can be correlated.
 - Runtime secrets are never stored in Git.
 
+## Immediate Cleanup Notes
+
+- The Kubernetes Secret currently contains local development values that are already in local commit history. Do not push that branch as-is to a public remote.
+- Before publishing Kubernetes work, replace committed secret values with a template such as `secrets.example.yaml`, keep the real local secret ignored, and rotate any value that has ever been pushed outside the machine.
+- If the local commits must be pushed later, clean the branch history first or recreate the branch from a safe base and reapply only non-secret changes.
+
 ## Current Focus
 
-The current focus is improving the existing GitHub Actions CI after completing the migration pass:
+The current focus is moving from CI and first-pass Kubernetes manifests toward deployable images and safer service behavior:
 
-- Keep the Maven reactor running on every relevant push and pull request.
-- Verify the CI service-container setup does not conflict with Testcontainers.
-- Upload Surefire and Failsafe reports on failure.
-- Consider uploading application logs or Testcontainers logs if integration tests fail.
-- Add a simple status checklist to the README once the CI behavior is stable.
+- Keep the Maven reactor green on every relevant push and pull request.
+- Add global exception handlers consistently across gateway, SSO, campaign, and transaction services.
+- Standardize local image tags used by `k8s/base`.
+- Create the GitHub Actions CD workflow on a separate branch.
+- Decide how to handle the already committed local Kubernetes Secret before publishing any Kubernetes branch.
 - Keep migration-backed tests green.
 
 Deferred correctness notes:
@@ -315,19 +331,21 @@ Deferred correctness notes:
 
 ## Short-Term Backlog
 
-- Improve GitHub Actions CI failure reporting.
-- Add service Dockerfiles.
+- Add global exception handlers to every runtime service.
+- Standardize Kubernetes image tags.
+- Add GitHub Actions CD workflow in a separate branch.
+- Replace committed k8s Secret values with a safe template before any public push.
 - Add correlation IDs and event IDs.
 
 ## Long-Term Backlog
 
-- Jenkins image publishing pipeline.
+- GitHub Actions or Jenkins image publishing pipeline.
 - AWS EC2 provisioning.
 - Harden outbox row claiming before multi-replica service deployments.
 - Add stuck outbox recovery.
 - Add RabbitMQ DLQs.
 - Revisit request idempotency and saga reply idempotency when a concrete duplicate-message bug is reproduced.
-- Kubernetes manifests for Minikube and EKS.
+- Kubernetes Minikube and EKS overlays.
 - Prometheus and Grafana dashboards.
 - Structured logging.
 - Contract versioning with schema documentation.

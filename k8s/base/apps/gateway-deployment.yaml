@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway-service
+  namespace: token-launchpad
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gateway-service
+  template:
+    metadata:
+      labels:
+        app: gateway-service
+    spec:
+      containers:
+        - name: gateway-service
+          image: token-launchpad/gateway-service:local
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8081
+              name: http
+          env:
+            - name: JWT_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: launchpad-secrets
+                  key: JWT_SECRET_KEY
+            - name: SPRING_DATA_REDIS_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: launchpad-config
+                  key: REDIS_HOST
+          startupProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 10
+            failureThreshold: 30
+          readinessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gateway-service
+  namespace: token-launchpad
+spec:
+  type: NodePort
+  selector:
+    app: gateway-service
+  ports:
+    - name: http
+      port: 8081
+      targetPort: 8081

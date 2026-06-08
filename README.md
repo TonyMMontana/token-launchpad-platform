@@ -8,11 +8,12 @@ Status: active development
 
 Current focus:
 
-- Request idempotency for transaction creation
-- Saga correctness
-- Transactional outbox hardening
+- Global exception handling across runtime services
+- GitHub Actions CD pipeline planning
+- Kubernetes local deployment cleanup
+- Safe handling of local Kubernetes secrets
 - Integration testing with Testcontainers
-- Preparing the project for CI/CD and cloud deployment
+- Preparing the project for image publishing and cloud deployment
 
 ## Architecture
 
@@ -43,7 +44,6 @@ gateway-service
 | `sso-service` | User registration, login, JWT creation |
 | `transaction-service` | Transaction creation, saga start, saga reply handling |
 | `campaign-service` | Campaign lifecycle, token reservation, Redis caching |
-| `discovery-server` | Eureka service registry |
 | `launchpad-common` | Shared event contracts |
 
 ## Infrastructure
@@ -56,11 +56,11 @@ The local environment uses:
 - Docker Compose
 - Maven multi-module build
 - Testcontainers for integration tests
+- First-pass Kubernetes manifests under `k8s/base`
 
 ## Implemented Patterns
 
 - API Gateway
-- Service Discovery
 - Database per Service
 - Saga Pattern
 - Transactional Outbox
@@ -68,14 +68,18 @@ The local environment uses:
 - Cache Aside
 - Shared Message Contracts
 - Integration Testing with Testcontainers
+- Flyway-backed schema migrations
+- GitHub Actions CI
 
 ## Patterns in Progress
 
 - Request idempotency with `X-Idempotency-Key`
+- Global exception handlers for consistent API errors
 - Outbox publisher hardening
 - Saga state machine
 - RabbitMQ dead-letter queues
-- Database migrations with Flyway or Liquibase
+- Kubernetes manifests for Minikube and later EKS
+- GitHub Actions CD for image publishing
 - Correlation IDs across HTTP and messaging
 - Prometheus and Grafana observability
 
@@ -90,7 +94,6 @@ The local environment uses:
 - RabbitMQ
 - PostgreSQL
 - Redis
-- Eureka
 - Maven
 - Docker Compose
 - Testcontainers
@@ -157,13 +160,13 @@ See [ROADMAP.md](ROADMAP.md) for the full build-in-public roadmap.
 
 Near-term work:
 
-- Finish robust request idempotency
-- Add transaction saga reply idempotency
-- Add Flyway or Liquibase migrations
+- Add global exception handlers to every runtime service
+- Create a GitHub Actions CD workflow on a separate branch
+- Replace committed local Kubernetes Secret values with a safe template before any public push
+- Standardize local image tags used by Kubernetes
 - Harden outbox row claiming and stuck-row recovery
 - Add RabbitMQ DLQs
-- Add GitHub Actions CI
-- Add Dockerfiles for every service
+- Add transaction saga reply idempotency
 
 ## Why This Project Exists
 
@@ -189,8 +192,8 @@ Example topics I am exploring:
 
 ## Current Limitations
 
-- Deployment manifests are not complete yet.
-- Database migrations are planned but not fully implemented.
+- Kubernetes base manifests exist, but Minikube and EKS overlays are not complete yet.
+- The local Kubernetes Secret must be cleaned up before any public push.
 - Observability dashboards are planned.
 - Outbox row claiming still needs production-grade hardening.
 - Request idempotency is being actively improved.
