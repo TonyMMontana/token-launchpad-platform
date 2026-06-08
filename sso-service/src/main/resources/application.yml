@@ -20,7 +20,3 @@ application:
     jwt:
       secret-key: ${JWT_SECRET_KEY}
       expiration: 3600000
-eureka:
-  client:
-    service-url:
-      defaultZone: http://localhost:8761/eureka

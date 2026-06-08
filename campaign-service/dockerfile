@@ -1,0 +1,27 @@
+FROM maven:3.9.9-eclipse-temurin-21 AS build
+
+WORKDIR /workspace
+
+COPY pom.xml .
+COPY gateway-service/pom.xml gateway-service/pom.xml
+COPY launchpad-common/pom.xml launchpad-common/pom.xml
+COPY campaign-service/pom.xml campaign-service/pom.xml
+COPY sso-service/pom.xml sso-service/pom.xml
+COPY transaction-service/pom.xml transaction-service/pom.xml
+
+RUN mvn -DskipTests -pl campaign-service -am dependency:go-offline
+
+COPY launchpad-common/src launchpad-common/src
+COPY campaign-service/src campaign-service/src
+
+RUN mvn -DskipTests -pl campaign-service -am package
+
+FROM eclipse-temurin:21-jre-alpine
+
+WORKDIR /app
+
+COPY --from=build /workspace/campaign-service/target/campaign-service-0.0.1-SNAPSHOT.jar app.jar
+
+EXPOSE 8082
+
+ENTRYPOINT ["java", "-jar", "/app/app.jar"]

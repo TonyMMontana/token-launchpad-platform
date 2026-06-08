@@ -67,7 +67,6 @@ public class RabbitMQConfig {
     public RabbitTemplate rabbitTemplate(ConnectionFactory connectionFactory, MessageConverter messageConverter) {
         RabbitTemplate template = new RabbitTemplate(connectionFactory);
         template.setMessageConverter(messageConverter);
-        template.setMandatory(true);
         template.setConfirmCallback(
                 (correlationData, ack, cause) -> {
                     if (ack) {

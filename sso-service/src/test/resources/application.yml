@@ -8,12 +8,6 @@ spring:
     enabled: true
     locations: classpath:db/migrations
 
-eureka:
-  client:
-    enabled: false
-    register-with-eureka: false
-    fetch-registry: false
-
 application:
   security:
     jwt:

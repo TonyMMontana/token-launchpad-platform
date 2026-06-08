@@ -1,0 +1,11 @@
+resources:
+  - namespace.yaml
+  - config.yaml
+  - secrets.yaml
+  - infra/postgres.yaml
+  - infra/redis.yaml
+  - infra/rabbitmq.yaml
+  - apps/sso-deployment.yaml
+  - apps/campaign-deployment.yaml
+  - apps/transaction-deployment.yaml
+  - apps/gateway-deployment.yaml
