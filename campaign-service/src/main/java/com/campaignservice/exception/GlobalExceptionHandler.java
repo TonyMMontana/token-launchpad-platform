@@ -1,6 +1,5 @@
-package com.transactionservice.exception;
+package com.campaignservice.exception;
 
-import com.transactionservice.exception.domain.IdempotencyConflictException;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -8,6 +7,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -18,14 +18,19 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     public static final String STATUS = "status";
     public static final String ERRORS = "errors";
 
-    @ExceptionHandler(IdempotencyConflictException.class)
-    protected ResponseEntity<Object> handleIdempotencyConflict(Exception ex) {
-        return handleException(HttpStatus.CONFLICT, ex.getMessage());
+    @ExceptionHandler(IllegalArgumentException.class)
+    protected ResponseEntity<Object> handleIllegalArgumentException(Exception ex) {
+        return handleException(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
     @ExceptionHandler(EntityNotFoundException.class)
     protected ResponseEntity<Object> handleEntityNotFound(Exception ex) {
         return handleException(HttpStatus.NOT_FOUND, ex.getMessage());
+    }
+
+    @ExceptionHandler(IOException.class)
+    protected ResponseEntity<Object> handleIOException(IOException ex) {
+        return handleException(HttpStatus.INTERNAL_SERVER_ERROR, "File processing failed.");
     }
 
     @ExceptionHandler(Exception.class)

@@ -84,12 +84,12 @@ The project is being built to learn:
 | Shared Contracts | event DTOs in `launchpad-common` |
 | Cache Aside | campaign cache with Redis and cache eviction |
 | Integration Testing | Testcontainers for real PostgreSQL, RabbitMQ, and Redis |
+|Global Exception Handling | make error responses consistent across every service |
 
 ### Next Patterns to Add
 
 | Pattern | Why It Matters Here |
 | --- | --- |
-| Global Exception Handling | make error responses consistent across every service |
 | Request Idempotency | protect public POST requests from duplicate client retries |
 | Saga State Machine | make transaction progress explicit and safe under duplicate replies |
 | Outbox Row Claiming | allow multiple service instances without duplicate publishing |
