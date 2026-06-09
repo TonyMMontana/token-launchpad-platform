@@ -23,6 +23,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -119,6 +121,20 @@ public class CampaignServiceImpl implements CampaignService {
         }
     }
 
+    @Override
+    public Page<CampaignResponseDto> getCampaigns(Pageable pageable) {
+        Page<Campaign> campaignPage = campaignRepository.findAll(pageable);
+        return campaignPage.map(campaign ->
+                new CampaignResponseDto(
+                        campaign.getId(),
+                        campaign.getTokenName(),
+                        campaign.getTargetAmount(),
+                        campaign.getStartTime(),
+                        campaign.getCampaignStatus()
+                )
+        );
+    }
+
     private Campaign mapToModel(CreateCampaignRequestDto requestDto) {
         Campaign campaign = new Campaign();
         campaign.setStartTime(requestDto.startTime());
@@ -174,11 +190,11 @@ public class CampaignServiceImpl implements CampaignService {
                     reservation.getAmount()
             );
             case RESERVE_TOKENS_FAILURE -> new TokensReservedFailedEvent(
-                        reservation.getTransactionId(),
-                        reservation.getCampaignId(),
-                        reservation.getAmount(),
-                        errorMessage
-                );
+                    reservation.getTransactionId(),
+                    reservation.getCampaignId(),
+                    reservation.getAmount(),
+                    errorMessage
+            );
         };
     }
 

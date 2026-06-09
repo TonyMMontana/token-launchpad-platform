@@ -5,6 +5,8 @@ import com.campaignservice.dto.CreateCampaignRequestDto;
 import com.campaignservice.dto.CreateCampaignResponseDto;
 import com.campaignservice.service.CampaignService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -23,6 +25,11 @@ public class CampaignController {
     @PostMapping
     public ResponseEntity<CreateCampaignResponseDto> createCampaign(@RequestBody CreateCampaignRequestDto requestDto) {
         return new ResponseEntity<>(campaignService.createCampaign(requestDto), HttpStatus.CREATED);
+    }
+
+    @GetMapping()
+    public ResponseEntity<Page<CampaignResponseDto>> getCampaigns(Pageable pageable) {
+        return new ResponseEntity<>(campaignService.getCampaigns(pageable), HttpStatus.OK);
     }
 
     @GetMapping("/{id}")
