@@ -7,6 +7,8 @@ import com.campaignservice.service.CampaignService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -28,7 +30,12 @@ public class CampaignController {
     }
 
     @GetMapping()
-    public ResponseEntity<Page<CampaignResponseDto>> getCampaigns(Pageable pageable) {
+    public ResponseEntity<Page<CampaignResponseDto>> getCampaigns(
+            @PageableDefault(
+                    sort = "startTime",
+                    direction = Sort.Direction.DESC
+            )
+            Pageable pageable) {
         return new ResponseEntity<>(campaignService.getCampaigns(pageable), HttpStatus.OK);
     }
 

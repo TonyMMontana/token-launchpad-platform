@@ -6,8 +6,9 @@ import com.fasterxml.jackson.databind.ObjectWriter;
 import com.launchpad.common.event.ReserveTokensEvent;
 import com.launchpad.common.event.TokensReservedFailedEvent;
 import com.launchpad.common.event.TokensReservedSuccessEvent;
+import com.launchpad.common.security.Roles;
 import com.transactionservice.dto.CreateTransactionRequestDto;
-import com.transactionservice.dto.CreateTransactionResponseDto;
+import com.transactionservice.dto.TransactionResponseDto;
 import com.transactionservice.exception.domain.IdempotencyConflictException;
 import com.transactionservice.model.outbox.OutboxEvent;
 import com.transactionservice.model.outbox.OutboxStatus;
@@ -20,12 +21,16 @@ import com.transactionservice.service.TransactionService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -39,7 +44,7 @@ public class TransactionServiceImpl implements TransactionService {
 
     @Override
     @Transactional
-    public CreateTransactionResponseDto createTransaction(UUID userId, UUID idempotencyKey, CreateTransactionRequestDto requestDto) {
+    public TransactionResponseDto createTransaction(UUID userId, UUID idempotencyKey, CreateTransactionRequestDto requestDto) {
         log.info("Creating transaction for userId: {} ", userId);
         LocalDateTime now = LocalDateTime.now();
         int updated = transactionRepository.insertIfAbsent(
@@ -119,6 +124,32 @@ public class TransactionServiceImpl implements TransactionService {
         // TODO: trigger refund process
     }
 
+    @Override
+    public TransactionResponseDto getTransaction(Long transactionId, UUID userId, Set<String> roles) {
+        Optional<Transaction> transactionOptional;
+
+        if (roles.contains(Roles.ADMIN)) {
+            transactionOptional = transactionRepository.findById(transactionId);
+        } else {
+            transactionOptional =
+                    transactionRepository.findByIdAndUserId(transactionId, userId);
+        }
+
+        Transaction transaction = transactionOptional.orElseThrow(() ->
+                new EntityNotFoundException(
+                        "Transaction not found for transactionId: " + transactionId
+                )
+        );
+
+        return toDto(transaction, Collections.emptyList());
+    }
+
+    @Override
+    public Page<TransactionResponseDto> getTransactions(UUID userId, Pageable pageable) {
+        return transactionRepository.findTransactionsByUserId(userId, pageable)
+                .map(transaction -> toDto(transaction, Collections.emptyList()));
+    }
+
     private OutboxEvent createOutboxEvent(Transaction saved) {
         OutboxEvent outboxEvent = new OutboxEvent();
         outboxEvent.setEventType(OutboxType.RESERVE_TOKENS);
@@ -143,13 +174,14 @@ public class TransactionServiceImpl implements TransactionService {
         return outboxEvent;
     }
 
-    private CreateTransactionResponseDto toDto(Transaction transaction, List<String> exceptions) {
-        return new CreateTransactionResponseDto(
+    private TransactionResponseDto toDto(Transaction transaction, List<String> exceptions) {
+        return new TransactionResponseDto(
                 transaction.getId(),
                 transaction.getUserId(),
                 transaction.getCampaignId(),
                 transaction.getAmount(),
                 transaction.getTransactionStatus(),
+                transaction.getCreatedAt(),
                 exceptions
         );
     }
