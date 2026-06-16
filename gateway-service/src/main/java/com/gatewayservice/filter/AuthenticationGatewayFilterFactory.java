@@ -1,5 +1,9 @@
 package com.gatewayservice.filter;
 
+import static com.launchpad.common.header.InternalHeaders.IDEMPOTENCY_KEY_HEADER;
+import static com.launchpad.common.header.InternalHeaders.USER_ID_HEADER;
+import static com.launchpad.common.header.InternalHeaders.USER_ROLES_HEADER;
+
 import com.gatewayservice.util.JwtUtil;
 import org.springframework.cloud.gateway.filter.GatewayFilter;
 import org.springframework.cloud.gateway.filter.factory.AbstractGatewayFilterFactory;
@@ -15,12 +19,10 @@ import reactor.core.publisher.Mono;
 
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Component
 public class AuthenticationGatewayFilterFactory extends AbstractGatewayFilterFactory<AuthenticationGatewayFilterFactory.Config> {
-
-    public static final String USER_ID_HEADER = "X-User-Id";
-    private static final String IDEMPOTENCY_KEY_HEADER = "X-Idempotency-Key";
 
     private final JwtUtil jwtUtil;
 
@@ -47,18 +49,29 @@ public class AuthenticationGatewayFilterFactory extends AbstractGatewayFilterFac
                 String token = authHeader.substring(7);
 
                 String userId;
+                List<String> roles;
                 try {
                     jwtUtil.validateToken(token);
                     userId = jwtUtil.extractUser(token);
+                    roles = jwtUtil.extractRoles(token);
                 } catch (Exception e) {
                     return onError(exchange, HttpStatus.UNAUTHORIZED, "Invalid or expired token");
                 }
+
+                if (roles == null || roles.isEmpty()) {
+                    return onError(exchange, HttpStatus.UNAUTHORIZED, "No roles found");
+                }
+                String rolesHeader = String.join(",", roles);
 
                 String idempotencyKey = exchange.getRequest().getHeaders().getFirst(IDEMPOTENCY_KEY_HEADER);
 
                 ServerHttpRequest modifiedRequest = exchange.getRequest().mutate()
                         .headers(headers -> {
+                            headers.remove(USER_ID_HEADER);
+                            headers.remove(USER_ROLES_HEADER);
+
                             headers.set(USER_ID_HEADER, userId);
+                            headers.set(USER_ROLES_HEADER, rolesHeader);
 
                             if (idempotencyKey != null) {
                                 headers.set(IDEMPOTENCY_KEY_HEADER, idempotencyKey);

@@ -4,6 +4,8 @@ import com.campaignservice.dto.CampaignResponseDto;
 import com.campaignservice.dto.CreateCampaignRequestDto;
 import com.campaignservice.dto.CreateCampaignResponseDto;
 import com.launchpad.common.event.ReserveTokensEvent;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 
 public interface CampaignService {
@@ -14,4 +16,6 @@ public interface CampaignService {
     CampaignResponseDto getCampaign(Long id);
 
     void reserveTokens(ReserveTokensEvent reserveTokensEvent);
+
+    Page<CampaignResponseDto> getCampaigns(Pageable pageable);
 }

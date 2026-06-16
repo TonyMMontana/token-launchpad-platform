@@ -59,6 +59,8 @@ The project is being built to learn:
 - GitHub Actions CI for the Maven reactor.
 - Service Dockerfiles.
 - First-pass Kubernetes base manifests for local image deployment.
+- Basic Minikube deployment smoke test with gateway-to-service flow.
+- Global exception handlers for the runtime services, with reactive gateway auth errors handled in the gateway filter.
 - Initial roadmap for CD, AWS, Kubernetes, and observability.
 
 ## Learning Principles
@@ -84,7 +86,7 @@ The project is being built to learn:
 | Shared Contracts | event DTOs in `launchpad-common` |
 | Cache Aside | campaign cache with Redis and cache eviction |
 | Integration Testing | Testcontainers for real PostgreSQL, RabbitMQ, and Redis |
-|Global Exception Handling | make error responses consistent across every service |
+| Global Exception Handling | make error responses consistent across every service |
 
 ### Next Patterns to Add
 
@@ -96,7 +98,9 @@ The project is being built to learn:
 | Dead Letter Queues | isolate poison messages instead of retrying forever |
 | Correlation IDs | trace one user request across gateway, services, and RabbitMQ |
 | Contract Versioning | evolve events without breaking other services |
-| CD Pipeline | build and publish deployable images only after CI passes |
+| API Smoke Surface | expose enough read endpoints to verify async flows after deployment |
+| CD Pipeline | build and publish deployable images after the manual deployment path is proven |
+| Kubernetes Ingress | expose gateway through nginx-ingress instead of direct NodePort access |
 | Observability | monitor saga failures, outbox lag, queue depth, and latency |
 
 ## Build Milestones
@@ -185,22 +189,70 @@ Done when:
 - Integration tests run in the cloud.
 - Failures expose useful logs.
 
-### Milestone 5: Docker Images and CD Pipeline
+### Milestone 5: API Smoke Surface and Local Deployment Checks
 
 Status: first pass started
 
-Goal: build and publish versioned service images.
+Goal: make the platform easy to verify after local Docker or Minikube deployment.
 
 Work:
 
 - Keep Dockerfiles for each service.
 - Standardize local Kubernetes image tags across all services.
+- Add `GET /transactions/{id}` so a created transaction can be checked after the async saga reply.
+- Add a user-scoped transaction listing endpoint when it becomes useful for manual verification.
+- Add `GET /campaigns` so deployment smoke tests can inspect available campaigns without direct database access.
+- Keep gateway routes working for all smoke-test endpoints.
+- Keep service and controller tests around the read endpoints.
+- Document a minimal manual smoke checklist for Docker Compose and Minikube.
+
+Done when:
+
+- A user can create a transaction and then check its status through the gateway.
+- Campaign data can be inspected through public API routes.
+- Manual Minikube verification does not require reading database tables directly.
+- Local image tags are consistent across the Kubernetes manifests.
+
+### Milestone 6: Kubernetes Orchestration
+
+Status: first pass started
+
+Goal: keep the platform running in Minikube first, then prepare the same base for AWS EKS.
+
+Work:
+
+- Keep the existing `k8s/base` Kustomize structure.
+- Keep namespace, ConfigMap, Secret references, infra manifests, app Deployments, Services, and probes.
+- Keep the committed Secret as a safe template and the real local Secret ignored.
+- Keep replicas at `1` until outbox publishing is safe for multiple instances.
+- Maintain a repeatable Minikube smoke path.
+- Add Minikube overlay when base manifests start needing local-only differences.
+- Add nginx-ingress later, after the API smoke surface is useful enough to expose through a stable ingress route.
+- Add EKS overlay after local Kubernetes behavior is stable.
+- Consider Helm or Kustomize overlays after raw manifests work.
+
+Done when:
+
+- Platform runs in Minikube from a clean local setup.
+- Gateway reaches backend services inside the cluster.
+- Smoke endpoints pass through the gateway.
+- The same base manifests can be adapted for EKS.
+
+### Milestone 7: Docker Images and CD Pipeline
+
+Status: planned
+
+Goal: build and publish versioned service images after the manual deployment path is proven.
+
+Work:
+
 - Add GitHub Actions CD workflow on a separate branch.
 - Build images only after CI passes.
 - Push images to DockerHub first or AWS ECR later.
 - Tag images with branch and commit SHA.
 - Keep registry credentials in GitHub Actions secrets, not in Git.
-- Add a root `Jenkinsfile`.
+- Make the image tags used by Kubernetes manifests match the tags produced by CD.
+- Add a root `Jenkinsfile` only if Jenkins remains part of the learning goal.
 - Optionally add image scanning.
 
 Done when:
@@ -210,56 +262,49 @@ Done when:
 - Registry credentials are not committed.
 - The image tags used by Kubernetes manifests are produced by the pipeline.
 
-### Milestone 6: AWS and Linux Provisioning
+### Milestone 8: Scale Safety and Messaging Hardening
 
 Status: planned
 
-Goal: move from laptop-only execution to secure Linux infrastructure.
+Goal: make the async flow safe before running multiple service replicas.
 
 Work:
 
-- Provision EC2 instances.
-- Configure SSH key access.
-- Disable password login and root login.
+- Harden outbox publishers in transaction and campaign services before running multiple replicas.
+- Add atomic outbox row claiming so two instances cannot publish the same row.
+- Recover stuck `PROCESSING` outbox rows.
+- Add RabbitMQ DLQs for saga queues.
+
+Done when:
+
+- Outbox rows cannot be published by two service instances at the same time.
+- Poison messages are moved to DLQ.
+- Stuck outbox rows are recovered or made visible.
+- Campaign and transaction services can be safely scaled beyond one replica.
+
+### Milestone 9: AWS and Linux Provisioning
+
+Status: planned
+
+Goal: move from laptop-only execution to secure cloud infrastructure.
+
+Work:
+
+- Choose EC2 or EKS as the first AWS target.
+- Provision Linux or EKS infrastructure.
+- Configure SSH key access if EC2 is used.
+- Disable password login and root login if EC2 is used.
 - Restrict inbound ports.
 - Keep PostgreSQL, Redis, and RabbitMQ internal.
 - Store secrets in AWS SSM Parameter Store or Secrets Manager.
 
 Done when:
 
-- Services can run on Linux.
+- Services can run on AWS-managed or AWS-hosted infrastructure.
 - Only gateway/API entry points are public.
 - Secrets are managed outside Git.
 
-### Milestone 7: Kubernetes Orchestration
-
-Status: first pass started
-
-Goal: deploy the platform to Minikube first, then AWS EKS, with publisher behavior ready for multiple service replicas.
-
-Work:
-
-- Keep the existing `k8s/base` Kustomize structure.
-- Keep namespace, ConfigMap, Secret references, infra manifests, app Deployments, Services, and probes.
-- Replace the committed local-development Secret with a safe template before any public push.
-- Decide whether to keep a dev-only Secret manifest ignored locally, use generated secrets, or move secrets to an external provider later.
-- Harden outbox publishers in transaction and campaign services before running multiple replicas.
-- Add atomic outbox row claiming so two instances cannot publish the same row.
-- Recover stuck `PROCESSING` outbox rows.
-- Add RabbitMQ DLQs for saga queues.
-- Add Minikube overlay.
-- Add EKS overlay.
-- Consider Helm or Kustomize after raw manifests work.
-
-Done when:
-
-- Outbox rows cannot be published by two service instances at the same time.
-- Poison messages are moved to DLQ.
-- Platform runs in Minikube.
-- Gateway reaches backend services inside the cluster.
-- The same base manifests can be adapted for EKS.
-
-### Milestone 8: Observability
+### Milestone 10: Observability
 
 Status: planned
 
@@ -282,7 +327,7 @@ Done when:
 - Grafana shows API latency, saga health, queue depth, and JVM health.
 - Outbox backlog and saga failures are visible.
 
-### Milestone 9: Production Hardening
+### Milestone 11: Production Hardening
 
 Status: later
 
@@ -290,8 +335,6 @@ Goal: reduce operational and security risks.
 
 Work:
 
-- Add global exception handlers to every runtime service.
-- Standardize API error response shape, validation errors, auth failures, and domain exceptions.
 - Add structured JSON logging.
 - Add correlation IDs across HTTP and RabbitMQ.
 - Add resource limits in Docker/Kubernetes.
@@ -307,40 +350,35 @@ Done when:
 - Logs, metrics, and traces can be correlated.
 - Runtime secrets are never stored in Git.
 
-## Immediate Cleanup Notes
-
-- The Kubernetes Secret currently contains local development values that are already in local commit history. Do not push that branch as-is to a public remote.
-- Before publishing Kubernetes work, replace committed secret values with a template such as `secrets.example.yaml`, keep the real local secret ignored, and rotate any value that has ever been pushed outside the machine.
-- If the local commits must be pushed later, clean the branch history first or recreate the branch from a safe base and reapply only non-secret changes.
-
 ## Current Focus
 
-The current focus is moving from CI and first-pass Kubernetes manifests toward deployable images and safer service behavior:
+The current focus is making the working Minikube deployment easier to verify through normal API calls:
 
 - Keep the Maven reactor green on every relevant push and pull request.
-- Add global exception handlers consistently across gateway, SSO, campaign, and transaction services.
-- Standardize local image tags used by `k8s/base`.
-- Create the GitHub Actions CD workflow on a separate branch.
-- Decide how to handle the already committed local Kubernetes Secret before publishing any Kubernetes branch.
+- Add `GET /transactions/{id}` for checking transaction status after creation.
+- Add enough campaign read endpoints to support smoke testing without database inspection.
+- Keep gateway routes updated for the new smoke-test endpoints.
+- Document the manual Minikube smoke checklist that already works locally.
 - Keep migration-backed tests green.
 
 Deferred correctness notes:
 
 - Request idempotency stays on the roadmap, but deeper changes should wait for a reproduced bug or failing test.
 - Outbox publisher hardening is scheduled near the Kubernetes milestone, where multiple replicas make duplicate publishing a real operational risk.
+- CD is intentionally delayed until the manual Kubernetes path and API smoke surface are stable.
 
 ## Short-Term Backlog
 
-- Add global exception handlers to every runtime service.
-- Standardize Kubernetes image tags.
-- Add GitHub Actions CD workflow in a separate branch.
-- Replace committed k8s Secret values with a safe template before any public push.
+- Add `GET /transactions/{id}`.
+- Add campaign listing/read endpoints needed for smoke tests.
+- Document Docker Compose and Minikube smoke commands.
 - Add correlation IDs and event IDs.
 
 ## Long-Term Backlog
 
 - GitHub Actions or Jenkins image publishing pipeline.
-- AWS EC2 provisioning.
+- nginx-ingress for Kubernetes gateway exposure.
+- AWS EC2 or EKS provisioning.
 - Harden outbox row claiming before multi-replica service deployments.
 - Add stuck outbox recovery.
 - Add RabbitMQ DLQs.

@@ -1,6 +1,8 @@
 package com.transactionservice.repository;
 
 import com.transactionservice.model.transaction.Transaction;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -42,4 +44,9 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     int updateStatusIfPending(@Param("transactionId") Long transactionId,
                               @Param("newStatus") String transactionStatus,
                               @Param("updatedAt") LocalDateTime updatedAt);
+
+
+    Optional<Transaction> findByIdAndUserId(Long transactionId, UUID userId);
+
+    Page<Transaction> findTransactionsByUserId(UUID userId, Pageable pageable);
 }
