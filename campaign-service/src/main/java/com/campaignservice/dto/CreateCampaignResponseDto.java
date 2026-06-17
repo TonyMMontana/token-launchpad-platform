@@ -3,13 +3,13 @@ package com.campaignservice.dto;
 import com.campaignservice.model.Campaign;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 public record CreateCampaignResponseDto(
         Long id,
         String tokenName,
         BigDecimal targetAmount,
-        LocalDateTime targetDate,
+        Instant targetDate,
         Campaign.CampaignStatus campaignStatus
 ) {
 }

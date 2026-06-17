@@ -1,11 +1,11 @@
 package com.campaignservice.dto;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 public record CreateCampaignRequestDto(
         String tokenName,
-        LocalDateTime startTime,
+        Instant startTime,
         BigDecimal targetAmount
 ) {
 }

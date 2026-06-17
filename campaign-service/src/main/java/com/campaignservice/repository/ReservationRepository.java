@@ -8,7 +8,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Optional;
 
 @Repository
@@ -26,6 +26,6 @@ public interface ReservationRepository extends JpaRepository<CampaignReservation
     int claimProcessingReservation(@Param("transactionId") Long transactionId,
                                    @Param("campaignId") Long campaignId,
                                    @Param("amount") BigDecimal amount,
-                                   @Param("createdAt") LocalDateTime createdAt,
-                                   @Param("updatedAt") LocalDateTime updatedAt);
+                                   @Param("createdAt") Instant createdAt,
+                                   @Param("updatedAt") Instant updatedAt);
 }

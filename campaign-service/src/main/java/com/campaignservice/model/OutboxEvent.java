@@ -12,7 +12,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Entity
 @Getter
@@ -37,13 +37,13 @@ public class OutboxEvent {
 
     int retryCount;
 
-    LocalDateTime nextAttemptAt;
+    Instant nextAttemptAt;
 
     String lastError;
 
-    LocalDateTime createdAt;
+    Instant createdAt;
 
-    LocalDateTime setNextAttemptAt;
+    Instant setNextAttemptAt;
 
     public enum EventType {
         RESERVE_TOKENS_SUCCESS,

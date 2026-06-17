@@ -15,7 +15,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Entity
 @Getter
@@ -37,8 +37,8 @@ public class CampaignReservation {
     @Enumerated(EnumType.STRING)
     ReservationStatus status;
     String failureReason;
-    LocalDateTime createdAt;
-    LocalDateTime updatedAt;
+    Instant createdAt;
+    Instant updatedAt;
 
     public enum ReservationStatus {
         PROCESSING,

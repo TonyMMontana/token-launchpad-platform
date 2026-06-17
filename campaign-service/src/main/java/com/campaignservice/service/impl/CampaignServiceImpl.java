@@ -29,7 +29,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Optional;
 
 @Slf4j
@@ -45,7 +45,7 @@ public class CampaignServiceImpl implements CampaignService {
 
     @Override
     public CreateCampaignResponseDto createCampaign(CreateCampaignRequestDto requestDto) {
-        long delay = Duration.between(LocalDateTime.now(), requestDto.startTime()).toMillis();
+        long delay = Duration.between(Instant.now(), requestDto.startTime()).toMillis();
         if (delay < 0) {
             throw new IllegalArgumentException("Campaign start time must be in the future!");
         }
@@ -78,14 +78,14 @@ public class CampaignServiceImpl implements CampaignService {
                 -> new EntityNotFoundException("There is no campaign with id: " + campaignId));
 
         return new CampaignResponseDto(campaign.getId(), campaign.getTokenName(),
-                campaign.getTargetAmount(), campaign.getStartTime(), campaign.getCampaignStatus());
+                campaign.getTargetAmount(), campaign.getTokensSold(), campaign.getStartTime(), campaign.getCampaignStatus());
     }
 
     @Override
     @Transactional
     @CacheEvict(value = "campaigns", key = "#reserveTokensEvent.campaignId()")
     public void reserveTokens(ReserveTokensEvent reserveTokensEvent) {
-        LocalDateTime now = LocalDateTime.now();
+        Instant now = Instant.now();
         int claimed = reservationRepository.claimProcessingReservation(
                 reserveTokensEvent.transactionId(),
                 reserveTokensEvent.campaignId(),
@@ -129,6 +129,7 @@ public class CampaignServiceImpl implements CampaignService {
                         campaign.getId(),
                         campaign.getTokenName(),
                         campaign.getTargetAmount(),
+                        campaign.getTokensSold(),
                         campaign.getStartTime(),
                         campaign.getCampaignStatus()
                 )
@@ -168,8 +169,9 @@ public class CampaignServiceImpl implements CampaignService {
         outboxEvent.setEventType(eventType);
         outboxEvent.setStatus(OutboxEvent.OutboxStatus.NEW);
         outboxEvent.setRetryCount(0);
-        outboxEvent.setCreatedAt(LocalDateTime.now());
-        outboxEvent.setNextAttemptAt(LocalDateTime.now());
+        Instant now = Instant.now();
+        outboxEvent.setCreatedAt(now);
+        outboxEvent.setNextAttemptAt(now);
 
         Object payload = getPayload(reservation, eventType, errorMessage);
         ObjectWriter objectWriter = objectMapper.writer().withDefaultPrettyPrinter();
@@ -204,7 +206,7 @@ public class CampaignServiceImpl implements CampaignService {
         );
         reservation.setStatus(reservationStatus);
         reservation.setFailureReason(failureReason);
-        reservation.setUpdatedAt(LocalDateTime.now());
+        reservation.setUpdatedAt(Instant.now());
         return reservationRepository.save(reservation);
     }
 
