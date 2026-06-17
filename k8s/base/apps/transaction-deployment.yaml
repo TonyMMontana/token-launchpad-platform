@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: transaction-service
-          image: token-launchpad/transaction-service:local
+          image: token-launchpad/transaction-service:local_v1
           imagePullPolicy: Never
           ports:
             - containerPort: 8083

@@ -4,8 +4,9 @@ metadata:
   name: launchpad-config
   namespace: token-launchpad
 data:
-  REDIS_HOST: redis
-  RABBITMQ_HOST: rabbitmq
-  SSO_SERVICE_URI: http://sso-service:8080
-  CAMPAIGN_SERVICE_URI: http://campaign-service:8082
-  TRANSACTION_SERVICE_URI: http://transaction-service:8083
+  REDIS_HOST: "redis"
+  RABBITMQ_HOST: "rabbitmq"
+  ACTIVE_PROFILES: "local,e2e"
+  SSO_SERVICE_URI: "http://sso-service:8080"
+  CAMPAIGN_SERVICE_URI: "http://campaign-service:8082"
+  TRANSACTION_SERVICE_URI: "http://transaction-service:8083"

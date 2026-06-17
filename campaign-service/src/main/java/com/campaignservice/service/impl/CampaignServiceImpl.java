@@ -28,6 +28,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
@@ -141,6 +142,7 @@ public class CampaignServiceImpl implements CampaignService {
         campaign.setStartTime(requestDto.startTime());
         campaign.setTokenName(requestDto.tokenName());
         campaign.setTargetAmount(requestDto.targetAmount());
+        campaign.setTokensSold(BigDecimal.ZERO);
         campaign.setCampaignStatus(Campaign.CampaignStatus.PENDING);
         return campaign;
     }
