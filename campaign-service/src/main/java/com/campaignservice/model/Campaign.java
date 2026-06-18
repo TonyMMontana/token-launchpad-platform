@@ -12,7 +12,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Entity
 @Setter
@@ -25,7 +25,7 @@ public class Campaign {
     String tokenName;
     BigDecimal targetAmount;
     BigDecimal tokensSold;
-    LocalDateTime startTime;
+    Instant startTime;
     @Enumerated(EnumType.STRING)
     @Column(name = "status")
     CampaignStatus campaignStatus;

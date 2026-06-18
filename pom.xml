@@ -15,5 +15,6 @@
         <module>sso-service</module>
         <module>campaign-service</module>
         <module>transaction-service</module>
+        <module>e2e-tests</module>
     </modules>
 </project>

@@ -11,7 +11,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 
 @Slf4j
@@ -31,7 +31,7 @@ public class OutboxPublisher {
         List<OutboxEvent> events = outboxRepository
                 .findByStatusAndNextAttemptAtLessThan(
                         OutboxEvent.OutboxStatus.NEW,
-                        LocalDateTime.now()
+                        Instant.now()
                 );
 
         for (OutboxEvent event : events) {
@@ -68,7 +68,7 @@ public class OutboxPublisher {
                     } else {
                         fresh.setStatus(OutboxEvent.OutboxStatus.NEW);
                     }
-                    fresh.setNextAttemptAt(LocalDateTime.now().plusSeconds(RETRY_DELAY_SECONDS));
+                    fresh.setNextAttemptAt(Instant.now().plusSeconds(RETRY_DELAY_SECONDS));
 
                     String reason = ex != null ? ex.getMessage() : confirm != null
                             ? confirm.getReason()

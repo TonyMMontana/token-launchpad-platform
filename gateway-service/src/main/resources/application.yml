@@ -24,13 +24,6 @@ spring:
             - name: Path
               args:
                 pattern: "/auth/**"
-          filters:
-            - name: RequestRateLimiter
-              args:
-                redis-rate-limiter.replenishRate: 3
-                redis-rate-limiter.burstCapacity: 3
-                redis-rate-limiter.requestedTokens: 1
-                key-resolver: "#{@userIpKeyResolver}"
         - id: campaign-route
           uri: http://campaign-service:8082
           predicates:
