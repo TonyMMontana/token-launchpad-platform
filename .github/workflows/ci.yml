@@ -18,6 +18,9 @@ permissions:
   contents: read
 
 jobs:
+
+  # JOB 1. verification
+
   verify:
     runs-on: ubuntu-latest
 
@@ -39,7 +42,7 @@ jobs:
         run: docker version
 
       - name: Verify all modules
-        run: mvn -B clean verify
+        run: mvn -B -T 1C clean verify -pl '!e2e-tests'
 
       - name: Upload test reports
         if: failure()
@@ -50,10 +53,113 @@ jobs:
             **/target/surefire-reports/**
             **/target/failsafe-reports/**
 
-      - name: Show Docker containers
-        if: failure()
-        run: docker ps -a
+  # JOB 2. Build Docker Images and deploy to k8s
+  build-docker-images-and-deploy-to-k8s:
+    needs: verify
+    runs-on: ubuntu-latest
 
-      - name: Show Docker images
-        if: failure()
-        run: docker images
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Expose GitHub Runtime for Docker Cache
+        uses: crazy-max/ghaction-github-runtime@v3
+
+      - name: Create kind cluster
+        uses: helm/kind-action@v1
+        with:
+          cluster_name: chart-testing
+
+      - name: Build gateway image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: gateway-service/dockerfile
+          push: false
+          load: true
+          tags: token-launchpad/gateway-service:${{ github.sha }}
+          cache-from: type=gha,scope=gateway-service
+          cache-to: type=gha,mode=max,scope=gateway-service
+
+      - name: Build sso image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: sso-service/dockerfile
+          push: false
+          load: true
+          tags: token-launchpad/sso-service:${{ github.sha }}
+          cache-from: type=gha,scope=sso-service
+          cache-to: type=gha,mode=max,scope=sso-service
+
+      - name: Build campaign image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: campaign-service/dockerfile
+          push: false
+          load: true
+          tags: token-launchpad/campaign-service:${{ github.sha }}
+          cache-from: type=gha,scope=campaign-service
+          cache-to: type=gha,mode=max,scope=campaign-service
+
+      - name: Build transaction image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: transaction-service/dockerfile
+          push: false
+          load: true
+          tags: token-launchpad/transaction-service:${{ github.sha }}
+          cache-from: type=gha,scope=transaction-service
+          cache-to: type=gha,mode=max,scope=transaction-service
+
+      - name: Load images into Kind
+        run: |
+          kind load docker-image token-launchpad/gateway-service:${{ github.sha }} -n chart-testing
+          kind load docker-image token-launchpad/sso-service:${{ github.sha }} -n chart-testing
+          kind load docker-image token-launchpad/campaign-service:${{ github.sha }} -n chart-testing
+          kind load docker-image token-launchpad/transaction-service:${{ github.sha }} -n chart-testing
+
+      - name: Set up Kustomize
+        uses: imranismail/setup-kustomize@v2
+
+      - name: Set CI image tags
+        working-directory: k8s/base
+        run: |
+          kustomize edit set image token-launchpad/gateway-service=token-launchpad/gateway-service:${{ github.sha }}
+          kustomize edit set image token-launchpad/sso-service=token-launchpad/sso-service:${{ github.sha }}
+          kustomize edit set image token-launchpad/campaign-service=token-launchpad/campaign-service:${{ github.sha }}
+          kustomize edit set image token-launchpad/transaction-service=token-launchpad/transaction-service:${{ github.sha }}
+
+      - name: Deploy to kind
+        run: kubectl apply -k k8s/base
+
+      - name: Wait for services rollout
+        run: |
+          kubectl rollout status statefulset/postgres -n token-launchpad
+          kubectl rollout status statefulset/rabbitmq -n token-launchpad
+          kubectl rollout status deployment/redis -n token-launchpad
+          
+          kubectl rollout status deployment/gateway-service -n token-launchpad
+          kubectl rollout status deployment/sso-service -n token-launchpad
+          kubectl rollout status deployment/campaign-service -n token-launchpad
+          kubectl rollout status deployment/transaction-service -n token-launchpad
+
+      - name: Port-forward Gateway
+        run: | 
+          kubectl port-forward svc/gateway-service 8080:80 -n token-launchpad &
+          sleep 5
+
+      - name: Run e2e tests
+        run: mvn -B test -pl e2e-tests "-Dtest=SagaE2ETest" "-Dgateway.url=http://localhost:8080"
