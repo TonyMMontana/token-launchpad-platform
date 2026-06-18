@@ -134,6 +134,23 @@ jobs:
       - name: Set up Kustomize
         uses: imranismail/setup-kustomize@v2
 
+      - name: Inject dummy CI Secrets
+        working-directory: k8s/base
+        run: |
+          cat <<EOF > secrets.yaml
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: launchpad-secrets
+            namespace: token-launchpad
+          stringData:
+            JWT_SECRET_KEY: "dGhpcy1pcy1hLWRldi1vbmx5LWNpLWp3dC1zZWNyZXQta2V5LTEyMzQ1Njc4OTA="
+            POSTGRES_USER: "postgres"
+            POSTGRES_PASSWORD: "postgres"
+            RABBITMQ_USERNAME: "admin"
+            RABBITMQ_PASSWORD: "admin"
+          EOF
+
       - name: Set CI image tags
         working-directory: k8s/base
         run: |
