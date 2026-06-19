@@ -1,19 +1,19 @@
 # Token Launchpad Platform
 
-Token Launchpad Platform is a Java 21 Spring Boot microservices project built to learn real distributed-system patterns: API Gateway, JWT authentication, RabbitMQ messaging, saga coordination, transactional outbox, idempotency, Testcontainers, CI/CD, Docker, Kubernetes, and observability.
+Java 21 Spring Boot microservices project for learning production-style backend engineering: authentication, API Gateway routing, RabbitMQ-based saga flow, transactional outbox, idempotency, PostgreSQL, Redis, Kubernetes, CI, and E2E validation.
 
-## Project Status
+The goal is not to collect technologies. The goal is to make a small distributed system that can be built, tested, deployed, observed, and explained.
 
-Status: active development
+## Current Status
+
+Active development.
 
 Current focus:
 
-- Global exception handling across runtime services
-- GitHub Actions CD pipeline planning
-- Kubernetes local deployment cleanup
-- Safe handling of local Kubernetes secrets
-- Integration testing with Testcontainers
-- Preparing the project for image publishing and cloud deployment
+- Keep the Maven and Kubernetes E2E CI pipeline green.
+- Make local Kubernetes deployment repeatable from a clean checkout.
+- Add Helm, Ingress, monitoring, logging, and deployment discipline before adding more business features.
+- Keep service replicas at `1` until outbox publishing is safe for multiple instances.
 
 ## Architecture
 
@@ -42,61 +42,36 @@ gateway-service
 | --- | --- |
 | `gateway-service` | Public API entry point, JWT validation, request routing |
 | `sso-service` | User registration, login, JWT creation |
-| `transaction-service` | Transaction creation, saga start, saga reply handling |
+| `transaction-service` | Transaction creation, request idempotency, saga start, saga reply handling |
 | `campaign-service` | Campaign lifecycle, token reservation, Redis caching |
-| `launchpad-common` | Shared event contracts |
+| `launchpad-common` | Shared message contracts |
 
-## Infrastructure
+## What Is Already There
 
-The local environment uses:
-
-- PostgreSQL
-- Redis
-- RabbitMQ
-- Docker Compose
-- Maven multi-module build
-- Testcontainers for integration tests
-- First-pass Kubernetes manifests under `k8s/base`
-
-## Implemented Patterns
-
-- API Gateway
-- Database per Service
-- Saga Pattern
-- Transactional Outbox
-- Idempotent Consumer
-- Cache Aside
-- Shared Message Contracts
-- Integration Testing with Testcontainers
-- Flyway-backed schema migrations
-- GitHub Actions CI
-
-## Patterns in Progress
-
-- Request idempotency with `X-Idempotency-Key`
-- Global exception handlers for consistent API errors
-- Outbox publisher hardening
-- Saga state machine
-- RabbitMQ dead-letter queues
-- Kubernetes manifests for Minikube and later EKS
-- GitHub Actions CD for image publishing
-- Correlation IDs across HTTP and messaging
-- Prometheus and Grafana observability
+- 4 Spring Boot runtime services plus shared contracts.
+- PostgreSQL, Redis, and RabbitMQ local infrastructure.
+- Dockerfiles for services and Docker Compose for local infrastructure.
+- First-pass Kubernetes manifests under `k8s/base`.
+- Gateway routing and JWT-based authentication.
+- Transaction creation and campaign token reservation flow.
+- RabbitMQ saga messages between transaction and campaign services.
+- Transactional outbox in transaction and campaign services.
+- Request idempotency for transaction creation.
+- Campaign-side reservation idempotency.
+- Flyway migrations with schema validation.
+- Testcontainers integration tests.
+- GitHub Actions Maven CI.
+- GitHub Actions kind deployment with gateway-level E2E saga tests.
+- API smoke endpoints for checking transaction and campaign state after deployment.
 
 ## Tech Stack
 
-- Java 21
-- Spring Boot 3.4
-- Spring Cloud Gateway
-- Spring Security
-- Spring Data JPA
-- Spring AMQP
-- RabbitMQ
-- PostgreSQL
-- Redis
-- Maven
-- Docker Compose
-- Testcontainers
+- Java 21, Spring Boot 3.4, Maven
+- Spring Cloud Gateway, Spring Security, Spring Data JPA, Spring AMQP
+- PostgreSQL, Redis, RabbitMQ
+- Docker, Docker Compose
+- Kubernetes, Kustomize
+- Testcontainers, GitHub Actions
 
 ## Local Development
 
@@ -106,10 +81,16 @@ Start local infrastructure:
 docker compose up -d
 ```
 
-Build all modules:
+Run the full build:
 
 ```bash
 mvn clean verify
+```
+
+Run one service test suite:
+
+```bash
+mvn test -pl campaign-service -am
 ```
 
 Build without tests:
@@ -118,86 +99,40 @@ Build without tests:
 mvn -DskipTests compile
 ```
 
-Run a focused service test suite:
+## Roadmap Summary
 
-```bash
-mvn test -pl campaign-service -am
-```
+The next work should improve employable backend depth, not add random tools.
 
-## Main Learning Topics
+| Priority | Area | Why |
+| --- | --- | --- |
+| 1 | Helm + Ingress | Turns raw manifests into a realistic deployment package and exposes the gateway properly |
+| 2 | Monitoring + logging | Shows the system can be operated, not only started |
+| 3 | CI/CD image pipeline | Makes builds traceable and deployable from versioned images |
+| 4 | Messaging hardening | Allows safe scaling beyond one replica |
+| 5 | Security hardening | Makes auth, secrets, and gateway behavior more production-like |
+| 6 | Payment webhook integration | Adds a realistic business integration with retries and idempotency |
 
-### Idempotency
+See [ROADMAP.md](ROADMAP.md) for the short implementation plan.
 
-HTTP clients may retry a request after a timeout. Without idempotency, one user action can create multiple transactions. The transaction API is being extended to support `X-Idempotency-Key`.
+## Intentionally Delayed
 
-Target behavior:
-
-- Same user + same key + same payload returns the original transaction.
-- Same user + same key + different payload returns conflict.
-- Concurrent duplicate requests create only one transaction.
-
-### Saga
-
-Transaction creation and token reservation happen across different services. The system uses RabbitMQ events instead of a distributed database transaction.
-
-Current flow:
-
-1. `transaction-service` creates a pending transaction.
-2. `transaction-service` stores an outbox event.
-3. Outbox publisher sends `ReserveTokensEvent`.
-4. `campaign-service` reserves tokens idempotently.
-5. `campaign-service` stores a reply outbox event.
-6. Reply publisher sends success or failure.
-7. `transaction-service` updates transaction status.
-
-### Transactional Outbox
-
-Outbox is used so database writes and outgoing messages are not split into unsafe operations. The next hardening step is safe row claiming for multiple service instances.
-
-## Roadmap
-
-See [ROADMAP.md](ROADMAP.md) for the full build-in-public roadmap.
-
-Near-term work:
-
-- Add global exception handlers to every runtime service
-- Create a GitHub Actions CD workflow on a separate branch
-- Replace committed local Kubernetes Secret values with a safe template before any public push
-- Standardize local image tags used by Kubernetes
-- Harden outbox row claiming and stuck-row recovery
-- Add RabbitMQ DLQs
-- Add transaction saga reply idempotency
+- Cloud deployment: useful later, but local Kubernetes should be clean first.
+- Service mesh: unnecessary until Kubernetes operations are mature.
+- More microservices: the current services need hardening first.
+- Event sourcing and CQRS: educational, but too heavy for the current stage.
 
 ## Why This Project Exists
 
-This project is my practical path to learning microservice architecture. Instead of only reading about patterns, I am implementing them in a system where the tradeoffs become visible:
+This repository is a portfolio project for practical backend engineering. The important learning topics are:
 
-- retries can create duplicates
-- messages can be delivered more than once
-- publishing can fail after a database commit
-- schemas must evolve safely
-- distributed flows need logs, metrics, and correlation IDs
-
-## Build in Public Notes
-
-I am using this repository to document not only final code, but also the reasoning behind architectural choices.
-
-Example topics I am exploring:
-
-- Why idempotency needs more than a unique key
-- Why outbox needs publisher confirms and retry state
-- Why duplicate RabbitMQ messages are normal
-- Why schema migrations matter in microservices
-- How to test distributed flows with Testcontainers
-
-## Current Limitations
-
-- Kubernetes base manifests exist, but Minikube and EKS overlays are not complete yet.
-- The local Kubernetes Secret must be cleaned up before any public push.
-- Observability dashboards are planned.
-- Outbox row claiming still needs production-grade hardening.
-- Request idempotency is being actively improved.
+- client retries and duplicate requests
+- duplicate RabbitMQ messages
+- database/message consistency through outbox
+- repeatable schema migrations
+- Kubernetes deployment
+- CI-based E2E validation
+- observability for async flows
 
 ## License
 
-This project is currently for learning and portfolio purposes.
+This project is for learning and portfolio purposes.
