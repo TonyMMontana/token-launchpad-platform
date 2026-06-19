@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.services.sso.name }}
+  namespace: {{ .Values.namespace }}
+spec:
+  replicas: {{ .Values.services.sso.replicas }}
+  selector:
+    matchLabels:
+      app: {{ .Values.services.sso.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.services.sso.name }}
+    spec:
+      containers:
+        - name: {{ .Values.services.sso.name }}
+          image: "{{ .Values.services.sso.image.repository }}:{{ .Values.services.sso.image.tag }}"
+          imagePullPolicy: {{ .Values.services.sso.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.services.sso.port }}
+              name: http
+          env:
+            - name: DATASOURCE_URL
+              value: jdbc:postgresql://{{ .Values.postgres.name }}:{{ .Values.postgres.port }}/{{ .Values.services.sso.database }}
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: launchpad-secrets
+                  key: POSTGRES_USER
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: launchpad-secrets
+                  key: POSTGRES_PASSWORD
+            - name: JWT_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: launchpad-secrets
+                  key: JWT_SECRET_KEY
+          startupProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 10
+            failureThreshold: 30
+          readinessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.services.sso.name }}
+  namespace: {{ .Values.namespace }}
+spec:
+  type: ClusterIP
+  selector:
+    app: {{ .Values.services.sso.name }}
+  ports:
+    - name: http
+      port: {{ .Values.services.sso.port }}
+      targetPort: {{ .Values.services.sso.port }}

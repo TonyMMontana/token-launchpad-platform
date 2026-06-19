@@ -1,0 +1,85 @@
+namespace: token-launchpad
+
+config:
+  activeProfiles: local,e2e
+  redisHost: redis
+  rabbitmqHost: rabbitmq
+  ssoServiceUri: http://sso-service:8080
+  campaignServiceUri: http://campaign-service:8082
+  transactionServiceUri: http://transaction-service:8083
+
+secrets:
+  jwtSecretKey: dGhpcy1pcy1hLWRldi1vbmx5LWNpLWp3dC1zZWNyZXQta2V5LTEyMzQ1Njc4OTA=
+  postgresUser: postgres
+  postgresPassword: postgres
+  rabbitmqUsername: admin
+  rabbitmqPassword: admin
+
+services:
+  gateway:
+    name: gateway-service
+    image:
+      repository: token-launchpad/gateway-service
+      tag: local_v1
+      pullPolicy: Never
+    port: 8081
+    replicas: 1
+
+  sso:
+    name: sso-service
+    image:
+      repository: token-launchpad/sso-service
+      tag: local
+      pullPolicy: Never
+    port: 8080
+    replicas: 1
+    database: launchpad_sso
+
+  campaign:
+    name: campaign-service
+    image:
+      repository: token-launchpad/campaign-service
+      tag: local_v3
+      pullPolicy: Never
+    port: 8082
+    replicas: 1
+    database: launchpad_campaign
+
+  transaction:
+    name: transaction-service
+    image:
+      repository: token-launchpad/transaction-service
+      tag: local_v1
+      pullPolicy: Never
+    port: 8083
+    replicas: 1
+    database: launchpad_transaction
+
+postgres:
+  name: postgres
+  image:
+    repository: postgres
+    tag: 16-alpine
+  port: 5432
+  storage: 1Gi
+
+redis:
+  name: redis
+  image:
+    repository: redis
+    tag: 7-alpine
+  port: 6379
+
+rabbitmq:
+  name: rabbitmq
+  image:
+    repository: masstransit/rabbitmq
+    tag: latest
+  amqpPort: 5672
+  managementPort: 15672
+  storage: 1Gi
+
+ingress:
+  enabled: true
+  className: nginx
+  host: launchpad.local
