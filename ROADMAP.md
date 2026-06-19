@@ -1,399 +1,221 @@
 # Token Launchpad Platform Roadmap
 
-This roadmap is written in a build-in-public style. It is both an implementation plan and a learning journal for building a Spring Boot microservices platform around token launch campaigns, transactions, asynchronous saga coordination, and cloud deployment.
+This roadmap is intentionally short. The project already has enough moving parts. The next goal is to make the system look like something a Java backend developer could deploy, observe, debug, and explain in an interview.
 
-The goal is not to collect buzzwords. The goal is to add microservice patterns when the project creates a real reason to need them.
+## Current Baseline
 
-## Project Vision
+### What Already Exists
 
-Token Launchpad Platform is a backend platform where users can authenticate, create transactions, reserve campaign tokens, and complete a distributed transaction flow across independent services.
-
-The project is being built to learn:
-
-- Spring Boot microservices
-- API Gateway and JWT security
-- RabbitMQ asynchronous messaging
-- Saga orchestration through events
-- Transactional outbox
-- Idempotency
-- Testcontainers integration tests
-- CI/CD
-- Docker, AWS, Kubernetes, Prometheus, and Grafana
-
-## Current System
-
-### Services
-
-- `gateway-service`: public entry point, route filtering, JWT validation, user header propagation.
-- `sso-service`: registration, login, JWT issuing, user persistence.
-- `campaign-service`: campaign lifecycle, token reservation, Redis caching, RabbitMQ consumers, campaign-side outbox.
-- `transaction-service`: transaction creation, saga start, transaction-side outbox, saga reply handling.
-- `launchpad-common`: shared event contracts used by messaging flows.
-
-### Infrastructure
-
-- PostgreSQL for service persistence.
-- Redis for campaign caching.
-- RabbitMQ for asynchronous saga messaging.
+- 4 runtime services: `gateway-service`, `sso-service`, `transaction-service`, `campaign-service`.
+- Shared event module: `launchpad-common`.
+- PostgreSQL, Redis, RabbitMQ.
 - Docker Compose for local infrastructure.
-- Maven root reactor for multi-module builds.
-
-## What Is Already Implemented
-
-- Basic service split across gateway, auth, campaign, transaction, and shared contracts.
-- JWT-based authentication through `sso-service`.
-- Gateway-level authentication filter.
-- Transaction creation flow.
-- Campaign token reservation flow.
-- RabbitMQ event flow:
-  - transaction-service publishes reserve-token command
-  - campaign-service consumes reservation command
-  - campaign-service publishes success/failure reply
-  - transaction-service consumes saga reply
-- Transactional outbox in `transaction-service`.
-- Campaign-side reservation idempotency.
-- Campaign-side outbox for saga replies.
-- Redis cache for campaign reads.
-- Testcontainers integration tests for campaign messaging, caching, concurrency, and idempotency.
-- Flyway migrations with Hibernate schema validation for production-like configs.
-- GitHub Actions CI for the Maven reactor.
-- Service Dockerfiles.
-- First-pass Kubernetes base manifests for local image deployment.
-- Basic Minikube deployment smoke test with gateway-to-service flow.
-- Global exception handlers for the runtime services, with reactive gateway auth errors handled in the gateway filter.
-- Initial roadmap for CD, AWS, Kubernetes, and observability.
-
-## Learning Principles
-
-- Build small vertical slices instead of isolated technical demos.
-- Every distributed operation should be retry-safe.
-- Every message consumer should be idempotent.
-- Every database schema change should be reproducible.
-- Every async process should be observable.
-- Deployment should come after correctness, not before it.
+- Dockerfiles for services.
+- Kubernetes base manifests under `k8s/base`.
+- Gateway routing and JWT validation.
+- Registration and login.
+- Transaction creation.
+- Campaign token reservation.
+- RabbitMQ saga flow between transaction and campaign services.
+- Transactional outbox on both sides of the saga.
+- Request idempotency for transaction creation.
+- Campaign reservation idempotency.
+- Flyway migrations.
+- Testcontainers integration tests.
+- GitHub Actions Maven CI.
+- GitHub Actions kind deployment with gateway-level E2E tests.
 
-## Pattern Map
+### Current Weak Points
 
-### Already Practicing
+- Kubernetes exists, but it is still raw and local-first.
+- No Helm chart yet.
+- No Ingress yet.
+- No production-style monitoring dashboards.
+- No centralized structured logging.
+- Docker images are not published through a versioned deployment pipeline.
+- Outbox publishing is not hardened for multiple replicas.
+- RabbitMQ DLQs are not in place.
+- Secrets are basic local Kubernetes templates, not production-grade secret management.
 
-| Pattern | Current Usage |
-| --- | --- |
-| API Gateway | `gateway-service` validates JWT and forwards traffic |
-| Database per Service | each domain service owns its persistence model |
-| Saga | transaction reservation flow across transaction and campaign services |
-| Transactional Outbox | outgoing RabbitMQ messages persisted before publishing |
-| Idempotent Consumer | campaign reservation keyed by transaction ID |
-| Shared Contracts | event DTOs in `launchpad-common` |
-| Cache Aside | campaign cache with Redis and cache eviction |
-| Integration Testing | Testcontainers for real PostgreSQL, RabbitMQ, and Redis |
-| Global Exception Handling | make error responses consistent across every service |
+## Step 1: Helm + Kubernetes Ingress
 
-### Next Patterns to Add
+### 1. What Is Already There
 
-| Pattern | Why It Matters Here |
-| --- | --- |
-| Request Idempotency | protect public POST requests from duplicate client retries |
-| Saga State Machine | make transaction progress explicit and safe under duplicate replies |
-| Outbox Row Claiming | allow multiple service instances without duplicate publishing |
-| Dead Letter Queues | isolate poison messages instead of retrying forever |
-| Correlation IDs | trace one user request across gateway, services, and RabbitMQ |
-| Contract Versioning | evolve events without breaking other services |
-| API Smoke Surface | expose enough read endpoints to verify async flows after deployment |
-| CD Pipeline | build and publish deployable images after the manual deployment path is proven |
-| Kubernetes Ingress | expose gateway through nginx-ingress instead of direct NodePort access |
-| Observability | monitor saga failures, outbox lag, queue depth, and latency |
+- `k8s/base` contains namespace, config, secrets, infrastructure manifests, app Deployments, and Services.
+- CI can deploy the platform into a disposable kind cluster.
+- Gateway-level E2E tests already prove the main saga through public routes.
 
-## Build Milestones
+### 2. Highest Impact Work
 
-### Milestone 1: Local Microservice Baseline
+- Add a Helm chart for the whole platform or one parent chart with service templates.
+- Move image names, tags, ports, environment variables, probes, resources, and replica counts into `values.yaml`.
+- Add nginx Ingress for `gateway-service`.
+- Keep PostgreSQL, Redis, RabbitMQ internal to the cluster.
+- Document one repeatable local path: install chart, run smoke tests, uninstall chart.
+- Keep replicas at `1` for transaction and campaign services until outbox row claiming is fixed.
 
-Status: in progress
+Impact: this is the highest-value next step. Helm + Ingress is a realistic Kubernetes deployment story and is easy to discuss in interviews.
 
-Goal: make the platform easy to run, inspect, and test locally.
+### 3. Good To Have
 
-Work:
+- Separate values files for `local`, `ci`, and future `cloud`.
+- Use Helm dependency charts for PostgreSQL, Redis, and RabbitMQ later.
+- Add chart linting in CI.
 
-- Keep Docker Compose infrastructure healthy.
-- Keep root Maven reactor working.
-- Document required environment variables.
-- Make local service startup predictable.
-- Keep integration tests isolated from each other.
+## Step 2: Monitoring And Logging
 
-Done when:
+### 1. What Is Already There
 
-- A fresh clone can run the core test suite.
-- Local infrastructure starts with one Docker Compose command.
-- Service configuration is documented.
+- The system has async saga behavior where observability matters.
+- Services already have clear domain events and smoke endpoints.
+- RabbitMQ, Redis, PostgreSQL, and JVM services are good monitoring targets.
 
-### Milestone 2: Correctness Before Scale
+### 2. Highest Impact Work
 
-Status: paused after first pass
+- Add Spring Boot Actuator to all runtime services.
+- Expose Prometheus metrics.
+- Add Prometheus and Grafana to local Kubernetes.
+- Build dashboards for:
+  - HTTP latency and error rate
+  - JVM memory and threads
+  - RabbitMQ queue depth
+  - saga success/failure count
+  - outbox backlog
+- Add structured JSON logs.
+- Add correlation IDs across gateway, HTTP calls, and RabbitMQ messages.
 
-Goal: make the distributed transaction flow safe under duplicate messages, retries, partial failures, and concurrent requests.
+Impact: this shows you understand operating services, not only writing code. For backend jobs this is stronger than adding another business feature.
 
-Work:
+### 3. Good To Have
 
-- Keep current request idempotency in `transaction-service`.
-- Keep idempotency keys scoped by user.
-- Keep same-key/different-payload conflict handling.
-- Keep transaction creation and outbox event creation in the same database transaction.
-- Return to deeper idempotency and saga-state hardening when a concrete duplicate-message bug appears.
+- Add Loki or OpenSearch for centralized logs.
+- Add OpenTelemetry tracing.
+- Add alerts for high error rate, growing outbox backlog, and DLQ messages.
 
-Done when:
+## Step 3: Versioned Image Build And Deployment Pipeline
 
-- Duplicate HTTP transaction requests create one transaction.
-- Duplicate RabbitMQ messages do not change state twice.
-- A concrete idempotency or saga bug can be reproduced with a failing test before adding more abstractions.
+### 1. What Is Already There
 
-### Milestone 3: Database Migrations
+- GitHub Actions already runs Maven CI.
+- CI already deploys to kind and runs gateway E2E tests.
+- Service Dockerfiles already exist.
+- Kubernetes manifests already use service images.
 
-Status: complete
+### 2. Highest Impact Work
 
-Goal: make schema changes explicit and repeatable.
+- Add a deployment workflow that builds all service images after CI passes.
+- Tag images with commit SHA.
+- Push images to DockerHub or GitHub Container Registry.
+- Make Helm/Kubernetes deploy the same tags produced by CI.
+- Store registry credentials only in GitHub Actions secrets.
+- Add a manual smoke checklist for deploying a specific version.
 
-Work:
+Impact: this creates a clean story from commit to tested image to Kubernetes deployment.
 
-- Add Flyway or Liquibase to `sso-service`.
-- Add migrations for users and roles.
-- Add Flyway or Liquibase to `transaction-service`.
-- Add migrations for transactions and outbox events.
-- Add Flyway or Liquibase to `campaign-service`.
-- Add migrations for campaigns, reservations, and outbox events.
-- Switch production-like configs from `ddl-auto: update` to `ddl-auto: validate`.
+### 3. Good To Have
 
-Done when:
+- Add Trivy image scanning.
+- Add SBOM generation.
+- Add rollback documentation.
+- Add separate workflows for pull request validation and release publishing.
 
-- Databases can be created from migrations only.
-- Tests run against migrated schemas.
-- Hibernate validates schema instead of generating it in production-like profiles.
+## Step 4: Messaging And Outbox Hardening
 
-### Milestone 4: CI With GitHub Actions
+### 1. What Is Already There
 
-Status: complete, with polish remaining
+- Transactional outbox exists in transaction and campaign services.
+- RabbitMQ saga flow exists.
+- Campaign reservation consumer is idempotent.
+- Request idempotency exists for transaction creation.
 
-Goal: validate the platform automatically on every push.
+### 2. Highest Impact Work
 
-Work:
+- Add atomic outbox row claiming so multiple service instances cannot publish the same event.
+- Add stuck outbox row recovery.
+- Add RabbitMQ dead-letter queues.
+- Add retry limits and poison-message handling.
+- Add tests for duplicate messages, failed publishes, and stuck outbox rows.
 
-- Keep `.github/workflows/ci.yml` running the Maven reactor.
-- Keep Java 21 and Maven dependency caching.
-- Confirm the workflow triggers cover the active development branches.
-- Decide whether CI should rely only on Testcontainers or keep GitHub service containers for smoke coverage.
-- Make CI logs and failure artifacts useful for debugging.
-- Upload test reports on failure.
-- Keep CI separate from CD so test validation stays fast and reliable.
+Impact: this is what makes scaling from one replica to multiple replicas credible.
 
-Done when:
+### 3. Good To Have
 
-- Every push runs the test suite.
-- Integration tests run in the cloud.
-- Failures expose useful logs.
+- Add event version fields.
+- Document message contracts.
+- Add compensation flow for releasing reserved tokens after failed/expired transactions.
 
-### Milestone 5: API Smoke Surface and Local Deployment Checks
+## Step 5: Security Hardening
 
-Status: first pass started
+### 1. What Is Already There
 
-Goal: make the platform easy to verify after local Docker or Minikube deployment.
+- `sso-service` issues JWTs.
+- `gateway-service` validates JWTs.
+- Services receive user context through gateway headers.
+- Kubernetes has basic Secret manifests.
 
-Work:
+### 2. Highest Impact Work
 
-- Keep Dockerfiles for each service.
-- Standardize local Kubernetes image tags across all services.
-- Add `GET /transactions/{id}` so a created transaction can be checked after the async saga reply.
-- Add a user-scoped transaction listing endpoint when it becomes useful for manual verification.
-- Add `GET /campaigns` so deployment smoke tests can inspect available campaigns without direct database access.
-- Keep gateway routes working for all smoke-test endpoints.
-- Keep service and controller tests around the read endpoints.
-- Document a minimal manual smoke checklist for Docker Compose and Minikube.
+- Make gateway the only public entry point.
+- Add rate limiting on sensitive routes.
+- Strengthen secret handling for local Kubernetes and CI.
+- Add clear separation between public routes and internal routes.
+- Validate internal headers so they cannot be spoofed from outside the gateway path.
 
-Done when:
+Impact: this improves the trust boundary story, which matters in enterprise backend interviews.
 
-- A user can create a transaction and then check its status through the gateway.
-- Campaign data can be inspected through public API routes.
-- Manual Minikube verification does not require reading database tables directly.
-- Local image tags are consistent across the Kubernetes manifests.
+### 3. Good To Have
 
-### Milestone 6: Kubernetes Orchestration
+- Add Keycloak or another OIDC provider later.
+- Add service-to-service authentication.
+- Add refresh tokens only if the auth flow becomes more realistic.
 
-Status: first pass started
+## Step 6: Payment Webhook Integration
 
-Goal: keep the platform running in Minikube first, then prepare the same base for AWS EKS.
+### 1. What Is Already There
 
-Work:
+- The domain already has transactions and campaign token reservation.
+- Request idempotency and saga patterns are already relevant.
+- RabbitMQ can handle async payment-result processing.
 
-- Keep the existing `k8s/base` Kustomize structure.
-- Keep namespace, ConfigMap, Secret references, infra manifests, app Deployments, Services, and probes.
-- Keep the committed Secret as a safe template and the real local Secret ignored.
-- Keep replicas at `1` until outbox publishing is safe for multiple instances.
-- Maintain a repeatable Minikube smoke path.
-- Add Minikube overlay when base manifests start needing local-only differences.
-- Add nginx-ingress later, after the API smoke surface is useful enough to expose through a stable ingress route.
-- Add EKS overlay after local Kubernetes behavior is stable.
-- Consider Helm or Kustomize overlays after raw manifests work.
+### 2. Highest Impact Work
 
-Done when:
+- Add a normal payment-provider-style integration before crypto payments.
+- Implement payment intent creation, payment status, and webhook processing.
+- Verify webhook signatures.
+- Make webhook handling idempotent.
+- Store external payment IDs and audit events.
+- Add tests for duplicate webhooks, failed payments, and late payment success/failure.
 
-- Platform runs in Minikube from a clean local setup.
-- Gateway reaches backend services inside the cluster.
-- Smoke endpoints pass through the gateway.
-- The same base manifests can be adapted for EKS.
+Impact: payment webhooks are a realistic business integration and give strong examples of idempotency, security, and async processing.
 
-### Milestone 7: Docker Images and CD Pipeline
+### 3. Good To Have
 
-Status: planned
+- Add a fake local payment provider for E2E tests.
+- Add Stripe sandbox integration if using an external provider becomes acceptable.
+- Add crypto payment integration only after the normal payment flow is solid.
 
-Goal: build and publish versioned service images after the manual deployment path is proven.
+## What Not To Prioritize Now
 
-Work:
+- AWS/EKS: useful later, but do not start there before Helm, Ingress, monitoring, and versioned images are clean locally.
+- Jenkins: GitHub Actions is enough unless a target job specifically asks for Jenkins.
+- Service mesh: too early.
+- Kafka: RabbitMQ already gives enough messaging depth for this project.
+- More services: harden the current services first.
+- Event sourcing: too much complexity for the current value.
+- Crypto payments: interesting for the project theme, but less generally employable than normal payment webhooks.
 
-- Add GitHub Actions CD workflow on a separate branch.
-- Build images only after CI passes.
-- Push images to DockerHub first or AWS ECR later.
-- Tag images with branch and commit SHA.
-- Keep registry credentials in GitHub Actions secrets, not in Git.
-- Make the image tags used by Kubernetes manifests match the tags produced by CD.
-- Add a root `Jenkinsfile` only if Jenkins remains part of the learning goal.
-- Optionally add image scanning.
+## Recommended Order
 
-Done when:
+1. Helm chart and Ingress.
+2. Prometheus, Grafana, Actuator metrics, structured logs, correlation IDs.
+3. Versioned Docker image publishing and deployment workflow.
+4. Outbox row claiming, stuck-row recovery, RabbitMQ DLQs.
+5. Gateway/security hardening.
+6. Payment webhook integration.
+7. Cloud deployment after the local production story is strong.
 
-- CD builds all service images from a clean checkout.
-- Images are traceable to Git commits.
-- Registry credentials are not committed.
-- The image tags used by Kubernetes manifests are produced by the pipeline.
+## Portfolio Target Sentence
 
-### Milestone 8: Scale Safety and Messaging Hardening
+The project should eventually be explainable like this:
 
-Status: planned
-
-Goal: make the async flow safe before running multiple service replicas.
-
-Work:
-
-- Harden outbox publishers in transaction and campaign services before running multiple replicas.
-- Add atomic outbox row claiming so two instances cannot publish the same row.
-- Recover stuck `PROCESSING` outbox rows.
-- Add RabbitMQ DLQs for saga queues.
-
-Done when:
-
-- Outbox rows cannot be published by two service instances at the same time.
-- Poison messages are moved to DLQ.
-- Stuck outbox rows are recovered or made visible.
-- Campaign and transaction services can be safely scaled beyond one replica.
-
-### Milestone 9: AWS and Linux Provisioning
-
-Status: planned
-
-Goal: move from laptop-only execution to secure cloud infrastructure.
-
-Work:
-
-- Choose EC2 or EKS as the first AWS target.
-- Provision Linux or EKS infrastructure.
-- Configure SSH key access if EC2 is used.
-- Disable password login and root login if EC2 is used.
-- Restrict inbound ports.
-- Keep PostgreSQL, Redis, and RabbitMQ internal.
-- Store secrets in AWS SSM Parameter Store or Secrets Manager.
-
-Done when:
-
-- Services can run on AWS-managed or AWS-hosted infrastructure.
-- Only gateway/API entry points are public.
-- Secrets are managed outside Git.
-
-### Milestone 10: Observability
-
-Status: planned
-
-Goal: understand system behavior without reading logs manually.
-
-Work:
-
-- Add Actuator and Prometheus metrics to all runtime services.
-- Expose `/actuator/prometheus`.
-- Add custom saga metrics.
-- Add custom outbox metrics.
-- Add idempotency metrics.
-- Monitor RabbitMQ queue depth and DLQ count.
-- Add Grafana dashboards.
-- Add alerts for high latency, high error rate, saga failures, and outbox backlog.
-
-Done when:
-
-- Prometheus scrapes all services.
-- Grafana shows API latency, saga health, queue depth, and JVM health.
-- Outbox backlog and saga failures are visible.
-
-### Milestone 11: Production Hardening
-
-Status: later
-
-Goal: reduce operational and security risks.
-
-Work:
-
-- Add structured JSON logging.
-- Add correlation IDs across HTTP and RabbitMQ.
-- Add resource limits in Docker/Kubernetes.
-- Add rolling update strategy.
-- Add PostgreSQL backup plan.
-- Add secret rotation process.
-- Add vulnerability scanning.
-- Add environment-specific profiles.
-
-Done when:
-
-- Deployments can roll without full downtime.
-- Logs, metrics, and traces can be correlated.
-- Runtime secrets are never stored in Git.
-
-## Current Focus
-
-The current focus is making the working Minikube deployment easier to verify through normal API calls:
-
-- Keep the Maven reactor green on every relevant push and pull request.
-- Add `GET /transactions/{id}` for checking transaction status after creation.
-- Add enough campaign read endpoints to support smoke testing without database inspection.
-- Keep gateway routes updated for the new smoke-test endpoints.
-- Document the manual Minikube smoke checklist that already works locally.
-- Keep migration-backed tests green.
-
-Deferred correctness notes:
-
-- Request idempotency stays on the roadmap, but deeper changes should wait for a reproduced bug or failing test.
-- Outbox publisher hardening is scheduled near the Kubernetes milestone, where multiple replicas make duplicate publishing a real operational risk.
-- CD is intentionally delayed until the manual Kubernetes path and API smoke surface are stable.
-
-## Short-Term Backlog
-
-- Add `GET /transactions/{id}`.
-- Add campaign listing/read endpoints needed for smoke tests.
-- Document Docker Compose and Minikube smoke commands.
-- Add correlation IDs and event IDs.
-
-## Long-Term Backlog
-
-- GitHub Actions or Jenkins image publishing pipeline.
-- nginx-ingress for Kubernetes gateway exposure.
-- AWS EC2 or EKS provisioning.
-- Harden outbox row claiming before multi-replica service deployments.
-- Add stuck outbox recovery.
-- Add RabbitMQ DLQs.
-- Revisit request idempotency and saga reply idempotency when a concrete duplicate-message bug is reproduced.
-- Kubernetes Minikube and EKS overlays.
-- Prometheus and Grafana dashboards.
-- Structured logging.
-- Contract versioning with schema documentation.
-- Compensation flow for releasing reserved tokens.
-- Optional CQRS read model for dashboards.
-
-## Patterns Intentionally Delayed
-
-- CQRS: useful later for read-heavy views, not needed yet.
-- Event Sourcing: educational but too heavy for the current stage.
-- Service Mesh: better after Kubernetes is stable.
-- Workflow engines: worth learning after the RabbitMQ saga is solid.
-- More microservices: current services should be hardened first.
+> I built a Java 21 Spring Boot microservice platform with API Gateway authentication, PostgreSQL, Redis, RabbitMQ saga messaging, transactional outbox, request idempotency, Flyway migrations, Testcontainers integration tests, Kubernetes deployment with Helm and Ingress, CI-based E2E tests, Prometheus/Grafana monitoring, structured logs, and versioned Docker image delivery.
