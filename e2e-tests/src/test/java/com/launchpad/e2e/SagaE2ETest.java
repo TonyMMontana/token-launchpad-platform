@@ -18,7 +18,7 @@ import java.util.concurrent.TimeUnit;
 
 public class SagaE2ETest {
 
-    private static final String DEFAULT_GATEWAY_URL = "http://localhost:8080";
+    private static final String DEFAULT_GATEWAY_URL = "http://localhost:8081";
 
     private static final String APPLICATION_JSON = "application/json";
     private static final String HEADER_AUTHORIZATION = "Authorization";

@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: launchpad-config
+data:
+  REDIS_HOST: {{ .Values.config.redisHost | quote }}
+  RABBITMQ_HOST: {{ .Values.config.rabbitmqHost | quote }}
+  ACTIVE_PROFILES: {{ .Values.config.activeProfiles | quote }}
+  SSO_SERVICE_URI: {{ .Values.config.ssoServiceUri | quote }}
+  CAMPAIGN_SERVICE_URI: {{ .Values.config.campaignServiceUri | quote }}
+  TRANSACTION_SERVICE_URI: {{ .Values.config.transactionServiceUri | quote }}

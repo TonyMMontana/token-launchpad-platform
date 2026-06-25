@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.services.gateway.name }}
+  namespace: {{ .Values.namespace }}
+spec:
+  replicas: {{ .Values.services.gateway.replicas }}
+  selector:
+    matchLabels:
+      app: {{ .Values.services.gateway.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.services.gateway.name }}
+    spec:
+      containers:
+        - name: {{ .Values.services.gateway.name }}
+          image: "{{ .Values.services.gateway.image.repository }}:{{ .Values.services.gateway.image.tag }}"
+          imagePullPolicy: {{ .Values.services.gateway.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.services.gateway.port }}
+              name: http
+          env:
+            - name: JWT_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: launchpad-secrets
+                  key: JWT_SECRET_KEY
+            - name: SPRING_DATA_REDIS_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: launchpad-config
+                  key: REDIS_HOST
+            - name: SPRING_PROFILES_ACTIVE
+              valueFrom:
+                configMapKeyRef:
+                  name: launchpad-config
+                  key: ACTIVE_PROFILES
+          startupProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 10
+            failureThreshold: 30
+          readinessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.services.gateway.name }}
+  namespace: {{ .Values.namespace }}
+spec:
+  type: ClusterIP
+  selector:
+    app: {{ .Values.services.gateway.name }}
+  ports:
+    - name: http
+      port: {{ .Values.services.gateway.port }}
+      targetPort: {{ .Values.services.gateway.port }}
